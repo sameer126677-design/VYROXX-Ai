@@ -1,0 +1,351 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Reusable Hardened Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isVerified() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUsernameSlug(slug) {
+      return slug is string && slug.size() >= 2 && slug.size() <= 40 && slug.matches('^[a-zA-Z0-9_.]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidPrivacyConsent(pc) {
+      return pc is map
+        && pc.keys().hasAll(['essentialStorage', 'optionalAnalytics', 'aiProcessingConsent', 'consentedAt'])
+        && pc.keys().hasOnly(['essentialStorage', 'optionalAnalytics', 'aiProcessingConsent', 'consentedAt', 'ageNoticeAcknowledged', 'consentVersion'])
+        && pc.essentialStorage is bool
+        && pc.optionalAnalytics is bool
+        && pc.aiProcessingConsent is bool
+        && pc.consentedAt is string
+        && pc.consentedAt.size() >= 10
+        && pc.consentedAt.size() <= 64
+        && (!('ageNoticeAcknowledged' in pc) || pc.ageNoticeAcknowledged is bool)
+        && (!('consentVersion' in pc) || (pc.consentVersion is string && pc.consentVersion.size() <= 40));
+    }
+
+    // --- Validation Blueprints ---
+    function isValidUserProfile(data, userId) {
+      return data.uid is string
+        && data.uid == userId
+        && data.uid == request.auth.uid
+        && data.displayName is string
+        && data.displayName.size() >= 1
+        && data.displayName.size() <= 100
+        && data.username is string
+        && data.username.size() >= 2
+        && data.username.size() <= 40
+        && data.email is string
+        && data.email.size() >= 3
+        && data.email.size() <= 200
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1000))
+        && (!('bio' in data) || (data.bio is string && data.bio.size() <= 500))
+        && (!('roleTitle' in data) || (data.roleTitle is string && data.roleTitle.size() <= 120))
+        && data.emailVerified is bool
+        && data.ageConfirmed18Plus is bool
+        && data.ageConfirmed18Plus == true
+        && isValidPrivacyConsent(data.privacyConsent)
+        && data.preferences is map
+        && data.preferences.keys().size() <= 30
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUsernameClaim(data, usernameSlug) {
+      return data.keys().hasAll(['uid', 'username', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'username', 'updatedAt'])
+        && data.uid is string
+        && data.uid == request.auth.uid
+        && data.username is string
+        && data.username.size() >= 2
+        && data.username.size() <= 40
+        && data.username == ('@' + usernameSlug)
+        && data.updatedAt == request.time;
+    }
+
+    function isValidProject(data, userId) {
+      return data.userId is string
+        && data.userId == userId
+        && data.userId == request.auth.uid
+        && data.title is string
+        && data.title.size() >= 1
+        && data.title.size() <= 160
+        && data.status in ['idle', 'generating', 'completed', 'failed']
+        && data.chatId is string
+        && isValidId(data.chatId)
+        && data.visualContinuity is map
+        && (!('latestScenePlan' in data) || data.latestScenePlan is map || data.latestScenePlan == null)
+        && (!('latestJobId' in data) || (data.latestJobId is string && data.latestJobId.size() <= 128))
+        && (!('thumbnailSummary' in data) || (data.thumbnailSummary is string && data.thumbnailSummary.size() <= 300))
+        && data.favorite is bool
+        && data.archived is bool
+        && (!('deletedAt' in data) || data.deletedAt == null || (data.deletedAt is string && data.deletedAt.size() <= 64))
+        && data.versionCount is number
+        && data.versionCount >= 0
+        && data.versionCount <= 500
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && data.lastModifiedAt is timestamp;
+    }
+
+    function isValidChatThread(data, userId) {
+      return data.userId is string
+        && data.userId == userId
+        && data.userId == request.auth.uid
+        && data.projectId is string
+        && isValidId(data.projectId)
+        && data.title is string
+        && data.title.size() >= 1
+        && data.title.size() <= 160
+        && data.messages is list
+        && data.messages.size() <= 100
+        && (data.messages.size() == 0 || data.messages[0] is map)
+        && data.versions is list
+        && data.versions.size() <= 50
+        && (data.versions.size() == 0 || data.versions[0] is map)
+        && data.historyIndex is number
+        && data.historyIndex >= -1
+        && data.historyIndex <= 50
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && data.lastOpenedAt is timestamp;
+    }
+
+    function isValidAsset(data, userId) {
+      return data.userId is string
+        && data.userId == userId
+        && data.userId == request.auth.uid
+        && data.name is string
+        && data.name.size() >= 1
+        && data.name.size() <= 160
+        && data.category in ['Characters', 'Backgrounds', 'Props', 'Images', 'Videos', 'Audio', 'Other Files']
+        && data.mimeType is string
+        && data.mimeType.size() >= 1
+        && data.mimeType.size() <= 120
+        && data.fileFormat is string
+        && data.fileFormat.size() >= 1
+        && data.fileFormat.size() <= 20
+        && data.fileSizeBytes is number
+        && data.fileSizeBytes >= 0
+        && data.fileSizeBytes <= 52428800
+        && data.fileSizeLabel is string
+        && data.fileSizeLabel.size() >= 1
+        && data.fileSizeLabel.size() <= 40
+        && data.source in ['Uploaded', 'AI-Generated']
+        && data.storagePath is string
+        && data.storagePath.size() <= 500
+        && (!('associatedProjectId' in data) || data.associatedProjectId == null || (data.associatedProjectId is string && data.associatedProjectId.size() <= 128))
+        && data.favorited is bool
+        && (!('textPreview' in data) || data.textPreview == null || (data.textPreview is string && data.textPreview.size() <= 20000))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidGenerationJob(data, userId) {
+      return data.userId is string
+        && data.userId == userId
+        && data.userId == request.auth.uid
+        && data.projectId is string
+        && isValidId(data.projectId)
+        && data.chatId is string
+        && isValidId(data.chatId)
+        && data.status in ['queued', 'planning', 'validating', 'rendering', 'completed', 'failed']
+        && data.prompt is string
+        && data.prompt.size() >= 1
+        && data.prompt.size() <= 4000
+        && data.progress is number
+        && data.progress >= 0
+        && data.progress <= 100
+        && (!('stageLabel' in data) || (data.stageLabel is string && data.stageLabel.size() <= 200))
+        && (!('error' in data) || data.error == null || (data.error is string && data.error.size() <= 1000))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    // --- Username Reservations (Uniqueness Lookup Only, No Listing) ---
+    match /usernames/{usernameSlug} {
+      allow get: if isVerified() && isValidUsernameSlug(usernameSlug);
+      allow list: if false;
+      allow create: if isVerified()
+        && isValidUsernameSlug(usernameSlug)
+        && isValidUsernameClaim(incoming(), usernameSlug);
+      allow update: if isVerified()
+        && isValidUsernameSlug(usernameSlug)
+        && existing().uid == request.auth.uid
+        && isValidUsernameClaim(incoming(), usernameSlug);
+      allow delete: if isVerified()
+        && isValidUsernameSlug(usernameSlug)
+        && existing().uid == request.auth.uid;
+    }
+
+    // --- Isolated User Root & Subcollections ---
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().emailVerified == true
+        && incoming().ageConfirmed18Plus == true
+        && incoming().keys().hasAll(['uid', 'displayName', 'username', 'email', 'emailVerified', 'ageConfirmed18Plus', 'privacyConsent', 'preferences', 'createdAt', 'updatedAt'])
+        && incoming().keys().hasOnly(['uid', 'displayName', 'username', 'email', 'photoURL', 'bio', 'roleTitle', 'emailVerified', 'ageConfirmed18Plus', 'privacyConsent', 'preferences', 'createdAt', 'updatedAt'])
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'username', 'photoURL', 'bio', 'roleTitle', 'emailVerified', 'privacyConsent', 'preferences', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      // Projects Subcollection
+      match /projects/{projectId} {
+        allow get: if isOwner(userId) && isValidId(projectId);
+        allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+
+        allow create: if isOwner(userId)
+          && isValidId(projectId)
+          && isValidProject(incoming(), userId)
+          && incoming().keys().hasAll(['userId', 'title', 'status', 'chatId', 'visualContinuity', 'favorite', 'archived', 'versionCount', 'createdAt', 'updatedAt', 'lastModifiedAt'])
+          && incoming().keys().hasOnly(['userId', 'title', 'status', 'chatId', 'visualContinuity', 'latestScenePlan', 'latestJobId', 'thumbnailSummary', 'favorite', 'archived', 'deletedAt', 'versionCount', 'createdAt', 'updatedAt', 'lastModifiedAt'])
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && incoming().lastModifiedAt == request.time;
+
+        allow update: if isOwner(userId)
+          && isValidId(projectId)
+          && isValidProject(incoming(), userId)
+          && incoming().userId == existing().userId
+          && incoming().chatId == existing().chatId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && (
+            incoming().diff(existing()).affectedKeys().hasOnly(['title', 'updatedAt', 'lastModifiedAt']) ||
+            incoming().diff(existing()).affectedKeys().hasOnly(['favorite', 'updatedAt']) ||
+            incoming().diff(existing()).affectedKeys().hasOnly(['archived', 'updatedAt']) ||
+            incoming().diff(existing()).affectedKeys().hasOnly(['deletedAt', 'updatedAt']) ||
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'visualContinuity', 'latestScenePlan', 'latestJobId', 'thumbnailSummary', 'versionCount', 'updatedAt', 'lastModifiedAt'])
+          );
+
+        allow delete: if isOwner(userId) && isValidId(projectId);
+      }
+
+      // Chats Subcollection
+      match /chats/{chatId} {
+        allow get: if isOwner(userId) && isValidId(chatId);
+        allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+
+        allow create: if isOwner(userId)
+          && isValidId(chatId)
+          && isValidChatThread(incoming(), userId)
+          && incoming().keys().hasAll(['userId', 'projectId', 'title', 'messages', 'versions', 'historyIndex', 'createdAt', 'updatedAt', 'lastOpenedAt'])
+          && incoming().keys().hasOnly(['userId', 'projectId', 'title', 'messages', 'versions', 'historyIndex', 'createdAt', 'updatedAt', 'lastOpenedAt'])
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && incoming().lastOpenedAt == request.time;
+
+        allow update: if isOwner(userId)
+          && isValidId(chatId)
+          && isValidChatThread(incoming(), userId)
+          && incoming().userId == existing().userId
+          && incoming().projectId == existing().projectId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && (
+            incoming().diff(existing()).affectedKeys().hasOnly(['lastOpenedAt', 'updatedAt']) ||
+            incoming().diff(existing()).affectedKeys().hasOnly(['title', 'updatedAt']) ||
+            incoming().diff(existing()).affectedKeys().hasOnly(['messages', 'versions', 'historyIndex', 'updatedAt', 'lastOpenedAt'])
+          );
+
+        allow delete: if isOwner(userId) && isValidId(chatId);
+      }
+
+      // Assets Subcollection
+      match /assets/{assetId} {
+        allow get: if isOwner(userId) && isValidId(assetId);
+        allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+
+        allow create: if isOwner(userId)
+          && isValidId(assetId)
+          && isValidAsset(incoming(), userId)
+          && incoming().keys().hasAll(['userId', 'name', 'category', 'mimeType', 'fileFormat', 'fileSizeBytes', 'fileSizeLabel', 'source', 'storagePath', 'favorited', 'createdAt', 'updatedAt'])
+          && incoming().keys().hasOnly(['userId', 'name', 'category', 'mimeType', 'fileFormat', 'fileSizeBytes', 'fileSizeLabel', 'source', 'storagePath', 'associatedProjectId', 'favorited', 'textPreview', 'createdAt', 'updatedAt'])
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+
+        allow update: if isOwner(userId)
+          && isValidId(assetId)
+          && isValidAsset(incoming(), userId)
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && (
+            incoming().diff(existing()).affectedKeys().hasOnly(['name', 'updatedAt']) ||
+            incoming().diff(existing()).affectedKeys().hasOnly(['favorited', 'updatedAt']) ||
+            incoming().diff(existing()).affectedKeys().hasOnly(['associatedProjectId', 'updatedAt'])
+          );
+
+        allow delete: if isOwner(userId) && isValidId(assetId);
+      }
+
+      // Generation Jobs Subcollection
+      match /generationJobs/{jobId} {
+        allow get: if isOwner(userId) && isValidId(jobId);
+        allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+
+        allow create: if isOwner(userId)
+          && isValidId(jobId)
+          && isValidGenerationJob(incoming(), userId)
+          && incoming().keys().hasAll(['userId', 'projectId', 'chatId', 'status', 'prompt', 'progress', 'createdAt', 'updatedAt'])
+          && incoming().keys().hasOnly(['userId', 'projectId', 'chatId', 'status', 'prompt', 'progress', 'stageLabel', 'error', 'createdAt', 'updatedAt'])
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time;
+
+        allow update: if isOwner(userId)
+          && isValidId(jobId)
+          && isValidGenerationJob(incoming(), userId)
+          && incoming().userId == existing().userId
+          && incoming().projectId == existing().projectId
+          && incoming().chatId == existing().chatId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && !(existing().status in ['completed', 'failed'])
+          && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'progress', 'stageLabel', 'error', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(jobId);
+      }
+    }
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user profile, preferences, and privacy consent records",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "username": { "type": "string", "minLength": 2, "maxLength": 40, "pattern": "^[a-zA-Z0-9_.]+$" },
+        "email": { "type": "string", "minLength": 3, "maxLength": 200 },
+        "photoURL": { "type": "string", "maxLength": 1000 },
+        "bio": { "type": "string", "maxLength": 500 },
+        "roleTitle": { "type": "string", "maxLength": 120 },
+        "emailVerified": { "type": "boolean" },
+        "ageConfirmed18Plus": { "type": "boolean" },
+        "privacyConsent": { "type": "object" },
+        "preferences": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "displayName", "username", "email", "emailVerified", "ageConfirmed18Plus", "privacyConsent", "preferences", "createdAt", "updatedAt"]
+    },
+    "UsernameClaim": {
+      "title": "UsernameClaim",
+      "description": "Unique username reservation mapped to a Firebase UID",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "username": { "type": "string", "minLength": 2, "maxLength": 40 },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "username", "updatedAt"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "User-owned AI animation creation project",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "status": { "type": "string", "enum": ["idle", "generating", "completed", "failed"] },
+        "chatId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "visualContinuity": { "type": "object" },
+        "latestScenePlan": { "type": "object" },
+        "latestJobId": { "type": "string", "maxLength": 128 },
+        "thumbnailSummary": { "type": "string", "maxLength": 300 },
+        "favorite": { "type": "boolean" },
+        "archived": { "type": "boolean" },
+        "deletedAt": { "type": "string", "maxLength": 64 },
+        "versionCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "lastModifiedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "status", "chatId", "visualContinuity", "favorite", "archived", "versionCount", "createdAt", "updatedAt", "lastModifiedAt"]
+    },
+    "ChatThread": {
+      "title": "ChatThread",
+      "description": "Project-linked conversation history and scene version snapshots",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "projectId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "messages": { "type": "array" },
+        "versions": { "type": "array" },
+        "historyIndex": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "lastOpenedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "projectId", "title", "messages", "versions", "historyIndex", "createdAt", "updatedAt", "lastOpenedAt"]
+    },
+    "Asset": {
+      "title": "Asset",
+      "description": "User-uploaded or project-associated media asset metadata",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "category": { "type": "string", "enum": ["Characters", "Backgrounds", "Props", "Images", "Videos", "Audio", "Other Files"] },
+        "mimeType": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "fileFormat": { "type": "string", "minLength": 1, "maxLength": 20 },
+        "fileSizeBytes": { "type": "number" },
+        "fileSizeLabel": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "source": { "type": "string", "enum": ["Uploaded", "AI-Generated"] },
+        "storagePath": { "type": "string", "maxLength": 500 },
+        "associatedProjectId": { "type": "string", "maxLength": 128 },
+        "favorited": { "type": "boolean" },
+        "textPreview": { "type": "string", "maxLength": 20000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "category", "mimeType", "fileFormat", "fileSizeBytes", "fileSizeLabel", "source", "storagePath", "favorited", "createdAt", "updatedAt"]
+    },
+    "GenerationJob": {
+      "title": "GenerationJob",
+      "description": "Tracked AI scene generation job status and result metadata",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "projectId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "chatId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "status": { "type": "string", "enum": ["queued", "planning", "validating", "rendering", "completed", "failed"] },
+        "prompt": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "progress": { "type": "number" },
+        "stageLabel": { "type": "string", "maxLength": 200 },
+        "error": { "type": "string", "maxLength": 1000 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "projectId", "chatId", "status", "prompt", "progress", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user profile, settings, and consent record"
+    },
+    "/usernames/{usernameSlug}": {
+      "schema": { "$ref": "#/entities/UsernameClaim" },
+      "description": "Unique username lookup document"
+    },
+    "/users/{userId}/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "User-owned animation projects"
+    },
+    "/users/{userId}/chats/{chatId}": {
+      "schema": { "$ref": "#/entities/ChatThread" },
+      "description": "User-owned project conversations"
+    },
+    "/users/{userId}/assets/{assetId}": {
+      "schema": { "$ref": "#/entities/Asset" },
+      "description": "User-owned uploaded or generated assets metadata"
+    },
+    "/users/{userId}/generationJobs/{jobId}": {
+      "schema": { "$ref": "#/entities/GenerationJob" },
+      "description": "User-owned AI generation job tracking records"
+    }
+  }
+}

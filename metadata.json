@@ -1,0 +1,6 @@
+{
+  "name": "VYROXX — The Ultimate AI Creation Workspace",
+  "description": "A prompt-first AI animation creation workspace where users describe scenes in natural language to generate, preview, refine, and export cinematic animations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
