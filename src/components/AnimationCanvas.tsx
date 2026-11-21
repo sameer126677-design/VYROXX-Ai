@@ -10,6 +10,7 @@ import {
   Film,
   Image as ImageIcon,
   Orbit,
+  FileJson,
 } from 'lucide-react';
 import {
   AnimationScenePlan,
@@ -23,6 +24,7 @@ import {
   fetchAuthenticatedAssetArrayBuffer,
   fetchAuthenticatedAssetBlobUrl,
 } from '../lib/apiClient';
+import { downloadScenePlanJson } from '../lib/downloadPlan';
 
 interface AnimationPreviewPlayerProps {
   scenePlan: AnimationScenePlan;
@@ -374,6 +376,18 @@ export const AnimationPreviewPlayer: React.FC<AnimationPreviewPlayerProps> = ({
 
         {/* Right Primary Actions: Download & Regenerate */}
         <div className="absolute bottom-3.5 right-3.5 flex items-center gap-2.5 z-10">
+          <button
+            type="button"
+            onClick={() =>
+              downloadScenePlanJson(scenePlan, (scenePlan as { title?: string }).title)
+            }
+            aria-label="Download scene plan (JSON)"
+            title="Download scene plan (JSON)"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-100 text-xs sm:text-sm font-medium border border-cyan-300/30 shadow-[0_4px_20px_rgba(0,0,0,0.6)] transition-all hover:border-cyan-400/60 whitespace-nowrap shrink-0 cursor-pointer"
+          >
+            <FileJson className="w-4 h-4 text-cyan-300" />
+            <span>Plan</span>
+          </button>
           <button
             type="button"
             onClick={onDownload}
