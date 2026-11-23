@@ -23,14 +23,12 @@ import {
   CHAIN,
   CODECRAFT_BASE_URL,
   generateAnimationScenePlan,
-  OPENROUTER_BASE_URL,
 } from './aiService';
 
 export {
   AI_UNAVAILABLE_USER_MESSAGE,
   CHAIN,
   CODECRAFT_BASE_URL,
-  OPENROUTER_BASE_URL,
 };
 
 const PORT = 3000;
