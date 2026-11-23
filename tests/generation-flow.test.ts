@@ -245,6 +245,37 @@ async function main() {
 
       const validPlan = buildValidApocalypsePlan();
       assert.equal(validateScenePlan(validPlan).ok, true);
+
+      const falseKneelingClaim = buildValidApocalypsePlan();
+      falseKneelingClaim.scenes[0].title = 'Kneeling Examination';
+      assert.equal(validateScenePlan(falseKneelingClaim).ok, false);
+
+      const realKneeling = buildValidApocalypsePlan();
+      realKneeling.scenes[0].title = 'Kneeling Examination';
+      realKneeling.scenes[0].elements[1].characterSpec.pose = 'kneeling';
+      assert.equal(validateScenePlan(realKneeling).ok, true);
+
+      const symbolWithoutContent = buildValidApocalypsePlan();
+      symbolWithoutContent.scenes[0].title = 'Holographic Symbol Reveal';
+      assert.equal(validateScenePlan(symbolWithoutContent).ok, false);
+
+      const symbolWithText = buildValidApocalypsePlan();
+      symbolWithText.scenes[0].title = 'Holographic Symbol Reveal';
+      symbolWithText.scenes[0].elements.push({
+        ...structuredClone(symbolWithText.scenes[0].elements[1]),
+        id: 'symbol_text',
+        kind: 'text',
+        label: 'Ancient Signal',
+        textSpec: {
+          text: '◇',
+          subtext: '',
+          fontSize: 'hero',
+          align: 'center',
+          revealEffect: 'glow-pulse',
+          showBackdrop: false,
+        },
+      });
+      assert.equal(validateScenePlan(symbolWithText).ok, true);
     }
   );
 
@@ -1765,7 +1796,7 @@ async function main() {
         assert.ok(sysInst.includes('Do NOT represent distant mountains as a "procedural-mesh" sphere'), '2D environment planning must use semantic landscape primitives');
         assert.ok(sysInst.includes('A requested close-up must use a clear close framing'), '2D close-up requests must affect camera framing');
         assert.ok(sysInst.includes('Do NOT use 3D-only pos3d, rot3d, size3d, or path3d'), '2D plans must not rely on 3D-only movement fields');
-        assert.ok(sysInst.includes('Never output an unsupported pose such as "kneeling"'), 'Planner must not claim unsupported character poses');
+        assert.ok(sysInst.includes('Use "kneeling" for a clearly lowered one-knee posture'), 'Planner must use the supported kneeling pose for a kneeling action');
         assert.ok(sysInst.includes('A shader effect alone is not the symbol'), 'Hologram effects must include their requested visual content');
         assert.ok(sysInst.includes('compare every scene\'s actual background and element colors'), 'Planner must cross-check generated colors against the requested palette');
       } finally {

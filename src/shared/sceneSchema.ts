@@ -2803,6 +2803,26 @@ function getScenePlanQualityIssue(plan: AnimationScenePlan): string | null {
         }
       }
     }
+
+    // Scene titles are part of the planner's declared intent. Catch two
+    // high-impact mismatches seen in generated videos before rendering.
+    if (/\\bkneel(?:ing)?\\b/i.test(scene.title)) {
+      const characters = scene.elements.filter(
+        (element) => element.kind === 'character' || element.kind === 'creature'
+      );
+      if (characters.length > 0 && !characters.some((element) => element.characterSpec?.pose === 'kneeling')) {
+        return `Scene ${sceneIndex + 1} is titled as a kneeling action, but no character has pose="kneeling".`;
+      }
+    }
+
+    if (/holographic?.{0,24}symbol|symbol.{0,24}holographic?/i.test(scene.title)) {
+      const hasRecognizableContent = scene.elements.some(
+        (element) => element.kind === 'text' || element.kind === 'logo'
+      );
+      if (!hasRecognizableContent) {
+        return `Scene ${sceneIndex + 1} promises a holographic symbol but contains no text or logo element.`;
+      }
+    }
   }
 
   const sceneDuration = plan.scenes.reduce((total, scene) => total + scene.durationSec, 0);
