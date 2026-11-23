@@ -23,14 +23,12 @@ import {
   CHAIN,
   CODECRAFT_BASE_URL,
   generateAnimationScenePlan,
-  OPENROUTER_BASE_URL,
 } from './aiService';
 
 export {
   AI_UNAVAILABLE_USER_MESSAGE,
   CHAIN,
   CODECRAFT_BASE_URL,
-  OPENROUTER_BASE_URL,
 };
 
 const PORT = 3000;
@@ -88,9 +86,7 @@ export interface CreateVyroxxAppOptions {
   rateLimiter?: SlidingWindowRateLimiter;
   ipRateLimitMax?: number;
   fetchFn?: typeof fetch;
-  openrouterFetch?: typeof fetch;
   codecraftFetch?: typeof fetch;
-  openrouterApiKey?: string;
   codecraftApiKey?: string;
   chain?: readonly AiChainItem[];
   timeoutMs?: number;
@@ -250,9 +246,7 @@ export function createVyroxxApiApp(options: CreateVyroxxAppOptions = {}) {
           },
           {
             fetchFn: options.fetchFn,
-            openrouterFetch: options.openrouterFetch,
             codecraftFetch: options.codecraftFetch,
-            openrouterApiKey: options.openrouterApiKey,
             codecraftApiKey: options.codecraftApiKey,
             chain: options.chain,
             timeoutMs: options.timeoutMs,
@@ -483,9 +477,9 @@ export function createVyroxxApiApp(options: CreateVyroxxAppOptions = {}) {
 
 async function startServer() {
   const { app, startupConfig } = createVyroxxApiApp();
-  if (!startupConfig.hasOpenrouterApiKey && !startupConfig.hasCodecraftApiKey) {
+  if (!startupConfig.hasCodecraftApiKey) {
     console.warn(
-      '[VYROXX] Warning: Neither OPENROUTER_API_KEY nor CODECRAFT_API_KEY is configured; AI scene planning will return 503 until at least one is set.'
+      '[VYROXX] Warning: CODECRAFT_API_KEY is not configured; AI scene planning will return 503 until it is set.'
     );
   }
 

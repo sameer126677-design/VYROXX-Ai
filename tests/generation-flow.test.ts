@@ -257,9 +257,9 @@ async function main() {
     }
   );
 
-  // 4. Full Express /api/ai/plan-scene Integration Tests (OpenRouter CHAIN[0], Failover, Continuity, Missing Keys)
+  // 4. Full Express /api/ai/plan-scene Integration Tests (CodeCraft CHAIN[0], Failover, Continuity, Missing Key)
   await runTest(
-    'Express /api/ai/plan-scene: Uses CHAIN[0] (OpenRouter), fails over to CodeCraft CHAIN[1..3], preserves continuity, handles invalid/missing keys cleanly',
+    'Express /api/ai/plan-scene: Uses CHAIN[0] (CodeCraft), fails over to CHAIN[1..2], preserves continuity, handles invalid/missing keys cleanly',
     async () => {
       const { AI_UNAVAILABLE_USER_MESSAGE, CHAIN, createVyroxxApiApp } = await import(
         '../server'
@@ -364,7 +364,6 @@ async function main() {
         allowedOrigins: new Set(['http://127.0.0.1:3000']),
         isProd: false,
         fetchFn: mockFetch,
-        openrouterApiKey: 'or-gen-test-key',
         codecraftApiKey: 'cc-gen-test-key',
       });
 
@@ -374,7 +373,7 @@ async function main() {
         const port = (server.address() as AddressInfo).port;
         const base = `http://127.0.0.1:${port}`;
 
-        // A. Valid "Create an apocalypse scene." prompt -> 200 using CHAIN[0] (OpenRouter)
+        // A. Valid "Create an apocalypse scene." prompt -> 200 using CHAIN[0] (CodeCraft)
         mode = 'valid_first';
         callsMade = 0;
         chainRequested.length = 0;
@@ -398,7 +397,7 @@ async function main() {
         };
         assert.deepEqual(chainRequested, [
           {
-            url: 'https://openrouter.ai/api/v1/chat/completions',
+            url: 'https://codecraftapi.com/v1/chat/completions',
             model: CHAIN[0].model,
           },
         ]);
@@ -429,7 +428,7 @@ async function main() {
         assert.equal(d2.scenePlan.visualContinuity.characterBible.length, 1);
         assert.equal(d2.scenePlan.visualContinuity.characterBible[0].name, 'Kael');
 
-        // C. Transient 503 on CHAIN[0] (OpenRouter) automatically fails over to CHAIN[1] (CodeCraft)
+        // C. Transient 503 on CHAIN[0] automatically fails over to CHAIN[1] (CodeCraft)
         mode = 'transient_then_valid';
         callsMade = 0;
         chainRequested.length = 0;
@@ -448,11 +447,11 @@ async function main() {
         });
         assert.equal(r3.status, 200);
         assert.deepEqual(chainRequested, [
-          { url: 'https://openrouter.ai/api/v1/chat/completions', model: CHAIN[0].model },
+          { url: 'https://codecraftapi.com/v1/chat/completions', model: CHAIN[0].model },
           { url: 'https://codecraftapi.com/v1/chat/completions', model: CHAIN[1].model },
         ]);
 
-        // D. Malformed empty-scenes AI output across all 4 CHAIN items fails cleanly with 503 user message
+        // D. Malformed empty-scenes AI output across all 3 CHAIN items fails cleanly with 503 user message
         mode = 'always_malformed';
         callsMade = 0;
         chainRequested.length = 0;
@@ -478,10 +477,8 @@ async function main() {
         server.close();
       }
 
-      // E. Missing both OPENROUTER_API_KEY and CODECRAFT_API_KEY -> 503 with clean user message
-      const prevOrKey = process.env.OPENROUTER_API_KEY;
+      // E. Missing CODECRAFT_API_KEY -> 503 with clean user message
       const prevCcKey = process.env.CODECRAFT_API_KEY;
-      delete process.env.OPENROUTER_API_KEY;
       delete process.env.CODECRAFT_API_KEY;
       const { app: noKeyApp } = createVyroxxApiApp({
         storageRoot: testStorageRoot,
@@ -489,7 +486,6 @@ async function main() {
         jwks,
         allowedOrigins: new Set(['http://127.0.0.1:3000']),
         isProd: false,
-        openrouterApiKey: '',
         codecraftApiKey: '',
       });
       const noKeyServer = noKeyApp.listen(0, '127.0.0.1');
@@ -511,7 +507,6 @@ async function main() {
         const d5 = (await r5.json()) as { error: string };
         assert.equal(d5.error, AI_UNAVAILABLE_USER_MESSAGE);
       } finally {
-        if (prevOrKey !== undefined) process.env.OPENROUTER_API_KEY = prevOrKey;
         if (prevCcKey !== undefined) process.env.CODECRAFT_API_KEY = prevCcKey;
         noKeyServer.close();
         fs.rmSync(testStorageRoot, { recursive: true, force: true });
@@ -519,9 +514,9 @@ async function main() {
     }
   );
 
-  // 5. Centralized aiService.ts Integration Tests (OpenRouter + CodeCraft 4-Step CHAIN Fallback)
+  // 5. Centralized aiService.ts Integration Tests (CodeCraft 3-Step CHAIN Fallback)
   await runTest(
-    'Centralized aiService.ts: Executes OpenRouter + CodeCraft strictly in CHAIN order, logs provider/model, handles 401/402/404/429/5xx/network/timeout/empty',
+    'Centralized aiService.ts: Executes CodeCraft strictly in CHAIN order, logs provider/model, handles 401/402/404/429/5xx/network/timeout/empty',
     async () => {
       const { createVyroxxApiApp } = await import('../server');
       const {
@@ -529,14 +524,11 @@ async function main() {
         AI_UNAVAILABLE_USER_MESSAGE,
         CHAIN,
         CODECRAFT_BASE_URL,
-        OPENROUTER_BASE_URL,
       } = await import('../aiService');
 
-      assert.equal(OPENROUTER_BASE_URL, 'https://openrouter.ai/api/v1');
       assert.equal(CODECRAFT_BASE_URL, 'https://codecraftapi.com/v1');
       assert.equal(AI_REQUEST_TIMEOUT_MS, 60_000);
       assert.deepEqual([...CHAIN], [
-        { provider: 'openrouter', model: 'nvidia/nemotron-3-ultra-550b-a55b:free' },
         { provider: 'codecraft', model: 'claude-fable-5' },
         { provider: 'codecraft', model: 'claude-opus-5.5' },
         { provider: 'codecraft', model: 'claude-sonnet-5' },
@@ -577,8 +569,8 @@ async function main() {
       type Scenario =
         | { kind: 'first_ok' }
         | { kind: 'fail_first_then_second'; failure: FailureKind }
-        | { kind: 'fail_three_then_fourth' }
-        | { kind: 'all_four_fail' };
+        | { kind: 'fail_two_then_third' }
+        | { kind: 'all_fail' };
 
       let scenario: Scenario = { kind: 'first_ok' };
       const capturedRequests: Array<{
@@ -640,12 +632,11 @@ async function main() {
         if (scenario.kind === 'fail_first_then_second' && model === CHAIN[0].model) {
           return simulateFailure(scenario.failure);
         }
-        if (scenario.kind === 'fail_three_then_fourth') {
+        if (scenario.kind === 'fail_two_then_third') {
           if (model === CHAIN[0].model) return simulateFailure('err_429');
           if (model === CHAIN[1].model) return simulateFailure('err_404');
-          if (model === CHAIN[2].model) return simulateFailure('err_503');
         }
-        if (scenario.kind === 'all_four_fail') {
+        if (scenario.kind === 'all_fail') {
           return simulateFailure('err_503');
         }
 
@@ -676,7 +667,6 @@ async function main() {
         allowedOrigins: new Set(['http://127.0.0.1:3000']),
         isProd: false,
         fetchFn: mockFetch,
-        openrouterApiKey: 'or-test-key-67890',
         codecraftApiKey: 'cc-test-key-12345',
         timeoutMs: 60,
       });
@@ -717,19 +707,19 @@ async function main() {
             }),
           });
 
-        // A. CHAIN[0] (OpenRouter) succeeds -> OpenRouter URL & key verified, CodeCraft NOT called
+        // A. CHAIN[0] (CodeCraft claude-fable-5) succeeds
         scenario = { kind: 'first_ok' };
         capturedRequests.length = 0;
         capturedLogs.length = 0;
-        const rOk = await postScene('proj_or_ok');
+        const rOk = await postScene('proj_cc_ok');
         assert.equal(rOk.status, 200);
         const dOk = (await rOk.json()) as {
           assistantMessage: string;
           scenePlan: ReturnType<typeof buildValidApocalypsePlan>;
         };
         assert.equal(capturedRequests.length, 1);
-        assert.equal(capturedRequests[0].url, 'https://openrouter.ai/api/v1/chat/completions');
-        assert.equal(capturedRequests[0].auth, 'Bearer or-test-key-67890');
+        assert.equal(capturedRequests[0].url, 'https://codecraftapi.com/v1/chat/completions');
+        assert.equal(capturedRequests[0].auth, 'Bearer cc-test-key-12345');
         assert.equal(capturedRequests[0].model, CHAIN[0].model);
         assert.equal(capturedRequests[0].hasSignal, true);
         assert.equal(capturedRequests[0].stream, false);
@@ -743,12 +733,12 @@ async function main() {
         assert.equal(validateScenePlan(dOk.scenePlan).ok, true);
         assert.ok(
           capturedLogs.some((line) =>
-            line.includes(`provider=openrouter model=${CHAIN[0].model}`)
+            line.includes(`provider=codecraft model=${CHAIN[0].model}`)
           ),
-          `Expected console log for openrouter/${CHAIN[0].model}, got: ${capturedLogs.join(' | ')}`
+          `Expected console log for codecraft/${CHAIN[0].model}, got: ${capturedLogs.join(' | ')}`
         );
 
-        // B. Every failure mode on CHAIN[0] (OpenRouter) falls back cleanly to CHAIN[1] (CodeCraft claude-fable-5)
+        // B. Every failure mode on CHAIN[0] falls back cleanly to CHAIN[1] (claude-opus-5.5)
         const failureModes: FailureKind[] = [
           'err_401',
           'err_402',
@@ -775,8 +765,8 @@ async function main() {
             scenePlan: ReturnType<typeof buildValidApocalypsePlan>;
           };
           assert.equal(capturedRequests.length, 2);
-          assert.equal(capturedRequests[0].url, 'https://openrouter.ai/api/v1/chat/completions');
-          assert.equal(capturedRequests[0].auth, 'Bearer or-test-key-67890');
+          assert.equal(capturedRequests[0].url, 'https://codecraftapi.com/v1/chat/completions');
+          assert.equal(capturedRequests[0].auth, 'Bearer cc-test-key-12345');
           assert.equal(capturedRequests[0].model, CHAIN[0].model);
           assert.equal(capturedRequests[1].url, 'https://codecraftapi.com/v1/chat/completions');
           assert.equal(capturedRequests[1].auth, 'Bearer cc-test-key-12345');
@@ -785,9 +775,9 @@ async function main() {
           assert.equal(validateScenePlan(dFb.scenePlan).ok, true);
           assert.ok(
             capturedWarns.some((line) =>
-              line.includes(`Failed: provider=openrouter model=${CHAIN[0].model}`)
+              line.includes(`Failed: provider=codecraft model=${CHAIN[0].model}`)
             ),
-            `Expected warning log for failed openrouter/${CHAIN[0].model} on ${modeName}`
+            `Expected warning log for failed codecraft/${CHAIN[0].model} on ${modeName}`
           );
           assert.ok(
             capturedLogs.some((line) =>
@@ -797,26 +787,25 @@ async function main() {
           );
         }
 
-        // C. CHAIN[0] + CHAIN[1] + CHAIN[2] fail -> falls back to CHAIN[3] (claude-sonnet-5) and succeeds
-        scenario = { kind: 'fail_three_then_fourth' };
+        // C. CHAIN[0] + CHAIN[1] fail -> falls back to CHAIN[2] (claude-sonnet-5) and succeeds
+        scenario = { kind: 'fail_two_then_third' };
         capturedRequests.length = 0;
         capturedLogs.length = 0;
         capturedWarns.length = 0;
-        const rFourth = await postScene('proj_chain_fourth');
-        assert.equal(rFourth.status, 200);
-        const dFourth = (await rFourth.json()) as { assistantMessage: string };
+        const rThird = await postScene('proj_chain_third');
+        assert.equal(rThird.status, 200);
+        const dThird = (await rThird.json()) as { assistantMessage: string };
         assert.deepEqual(
           capturedRequests.map((r) => r.model),
           CHAIN.map((c) => c.model)
         );
-        assert.equal(dFourth.assistantMessage, `Generated via ${CHAIN[3].model}.`);
+        assert.equal(dThird.assistantMessage, `Generated via ${CHAIN[2].model}.`);
         assert.ok(capturedWarns.some((line) => line.includes(`model=${CHAIN[0].model}`)));
         assert.ok(capturedWarns.some((line) => line.includes(`model=${CHAIN[1].model}`)));
-        assert.ok(capturedWarns.some((line) => line.includes(`model=${CHAIN[2].model}`)));
-        assert.ok(capturedLogs.some((line) => line.includes(`model=${CHAIN[3].model}`)));
+        assert.ok(capturedLogs.some((line) => line.includes(`model=${CHAIN[2].model}`)));
 
-        // D. All 4 CHAIN items fail -> HTTP 503 with exact friendly message
-        scenario = { kind: 'all_four_fail' };
+        // D. All 3 CHAIN items fail -> HTTP 503 with exact friendly message
+        scenario = { kind: 'all_fail' };
         capturedRequests.length = 0;
         capturedErrors.length = 0;
         const rFailAll = await postScene('proj_chain_all_fail');
@@ -1586,7 +1575,6 @@ async function main() {
         storageRoot: testStorageRoot,
         allowedOrigins: new Set(['http://127.0.0.1:3000']),
         isProd: false,
-        openrouterApiKey: 'or-p1c-test-key',
         codecraftApiKey: 'cc-p1c-test-key',
         fetchFn: async (_input, init) => {
           const parsedBody = JSON.parse(String(init?.body || '{}')) as {

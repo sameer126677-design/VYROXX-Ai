@@ -49,29 +49,24 @@ const LIVE_PROMPTS: Array<{ id: string; prompt: string; editPrompt: string }> = 
 ];
 
 async function main() {
-  const hasOpenrouter = Boolean(
-    process.env.OPENROUTER_API_KEY &&
-      process.env.OPENROUTER_API_KEY !== 'MY_OPENROUTER_API_KEY' &&
-      process.env.OPENROUTER_API_KEY !== 'OPENROUTER_API_KEY'
-  );
   const hasCodecraft = Boolean(
     process.env.CODECRAFT_API_KEY &&
       process.env.CODECRAFT_API_KEY !== 'MY_CODECRAFT_API_KEY' &&
       process.env.CODECRAFT_API_KEY !== 'CODECRAFT_API_KEY'
   );
 
-  if (!hasOpenrouter && !hasCodecraft) {
+  if (!hasCodecraft) {
     console.log(
-      'SKIPPED LIVE LLM CALLS: Neither OPENROUTER_API_KEY nor CODECRAFT_API_KEY is configured in the shell environment.'
+      'SKIPPED LIVE LLM CALLS: CODECRAFT_API_KEY is not configured in the shell environment.'
     );
     console.log(
-      'Run `OPENROUTER_API_KEY=... CODECRAFT_API_KEY=... npx tsx tests/live-e2e-verify.ts` to execute all 6 live prompts + natural-language edits.'
+      'Run `CODECRAFT_API_KEY=... npx tsx tests/live-e2e-verify.ts` to execute all 6 live prompts + natural-language edits.'
     );
     return;
   }
 
   console.log(
-    `Running REAL end-to-end tests via centralized aiService.ts (OpenRouter configured=${hasOpenrouter}, CodeCraft configured=${hasCodecraft})`
+    `Running REAL end-to-end tests via centralized aiService.ts (CodeCraft configured=${hasCodecraft})`
   );
 
   const { createVyroxxApiApp } = await import('../server');

@@ -921,7 +921,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </h3>
               <p className="text-xs text-slate-300 leading-relaxed">
                 Full-stack prompt-first AI animation studio powered by Firebase Authentication,
-                user-isolated Cloud Firestore, server-side OpenRouter &amp; CodeCraft AI scene planning,
+                user-isolated Cloud Firestore, server-side CodeCraft AI scene planning,
                 and deterministic Spatial 3D &amp; 2D vector animation &amp; export renderers.
               </p>
               <div className="flex flex-wrap gap-3 pt-2">
