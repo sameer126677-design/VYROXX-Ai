@@ -100,6 +100,10 @@ export function buildCreationExecutionPlan(
 
     for (const element of scene.elements) {
       for (const capability of ELEMENT_CAPABILITIES[element.kind] ?? []) {
+        // Renderer selection is global for this plan; do not accidentally schedule
+        // a second renderer just because an element can exist in both pipelines.
+        if (capability === 'canvas-2d' && is3d) continue;
+        if (capability === 'three-3d' && !is3d) continue;
         addDecision(decisions, capability, scene.id);
       }
       if (element.physicsSpec && element.physicsSpec.mode !== 'none') {

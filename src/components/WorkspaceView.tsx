@@ -21,7 +21,6 @@ import {
   UserProfileRecord,
 } from '../types';
 import { AnimationScenePlan } from '../shared/sceneSchema';
-import type { CreationExecutionPlan } from '../engine/capabilities/capabilityEngine';
 import { AiAssistantAvatar, UserAvatar } from './BrandLogo';
 import { AnimationPreviewPlayer } from './AnimationCanvas';
 import { PromptComposer } from './PromptComposer';

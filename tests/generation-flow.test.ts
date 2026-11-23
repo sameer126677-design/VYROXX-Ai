@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { AddressInfo } from 'node:net';
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
+import { buildCreationExecutionPlan } from '../src/engine/capabilities/capabilityEngine';
 import {
   CharacterSpecSchema,
   createDefaultVisualContinuity,
@@ -276,6 +277,30 @@ async function main() {
         },
       });
       assert.equal(validateScenePlan(symbolWithText).ok, true);
+    }
+  );
+
+  // 3b. AI Creation Director capability routing
+  await runTest(
+    'Creation Director: Route scene-plan features to the correct local renderer and assist level',
+    () => {
+      const normalized2d = normalizeScenePlan(buildValidApocalypsePlan());
+      assert.equal(normalized2d.ok, true);
+      if (!normalized2d.ok) return;
+
+      const localPlan = buildCreationExecutionPlan('Create a vector animation of a survivor running through a ruined city.', normalized2d.data);
+      assert.equal(localPlan.renderMode, '2d');
+      assert.equal(localPlan.recommendedAssist, 'local-render');
+      assert.ok(localPlan.decisions.some((item) => item.capability === 'canvas-2d'));
+      assert.ok(!localPlan.decisions.some((item) => item.capability === 'three-3d'));
+      assert.ok(localPlan.decisions.some((item) => item.capability === 'character-animation'));
+      assert.ok(localPlan.decisions.some((item) => item.capability === 'camera-direction'));
+
+      const stillPlan = buildCreationExecutionPlan('Generate a photorealistic image of a glass product.', normalized2d.data);
+      assert.equal(stillPlan.recommendedAssist, 'image-model');
+
+      const videoPlan = buildCreationExecutionPlan('Create photorealistic video with realistic human acting.', normalized2d.data);
+      assert.equal(videoPlan.recommendedAssist, 'video-model');
     }
   );
 
