@@ -67,6 +67,7 @@ import {
   normalizeVisualContinuity,
 } from './shared/sceneSchema';
 import { MAX_UPLOAD_BYTES, validateUploadBytes } from './shared/uploadValidation';
+import { buildCreationExecutionPlan } from './engine/capabilities/capabilityEngine';
 import {
   AppSettings,
   AssetCategory,
@@ -564,7 +565,7 @@ export default function App() {
           ? settings.customDefaultFps
           : Number(settings.defaultFps) || 30;
 
-      let aiResponse: { assistantMessage: string; scenePlan: AnimationScenePlan };
+      let aiResponse: { assistantMessage: string; scenePlan: AnimationScenePlan; creationPlan?: ReturnType<typeof buildCreationExecutionPlan> };
       if (import.meta.env.DEV && promptText.trim() === '/devtest whale') {
         const { DEV_WHALE_SCENE_PLAN } = await import('../tests/fixtures/devWhale');
         const normalizedDev = normalizeScenePlan(DEV_WHALE_SCENE_PLAN, {
@@ -580,6 +581,7 @@ export default function App() {
           assistantMessage:
             'Loaded DEV test fixture: Blue Whale (14-part 3D custom model).',
           scenePlan: normalizedDev.data,
+          creationPlan: buildCreationExecutionPlan(promptText, normalizedDev.data),
         };
       } else {
         aiResponse = await planAnimationScene({
@@ -640,6 +642,7 @@ export default function App() {
           minute: '2-digit',
         }),
         scenePlan: validatedScenePlan,
+        creationPlan: aiResponse.creationPlan ?? buildCreationExecutionPlan(promptText, validatedScenePlan),
         jobId,
         versionNumber: nextVersionNum,
         status: 'completed',

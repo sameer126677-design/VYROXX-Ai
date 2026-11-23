@@ -21,6 +21,7 @@ import {
   UserProfileRecord,
 } from '../types';
 import { AnimationScenePlan } from '../shared/sceneSchema';
+import type { CreationExecutionPlan } from '../engine/capabilities/capabilityEngine';
 import { AiAssistantAvatar, UserAvatar } from './BrandLogo';
 import { AnimationPreviewPlayer } from './AnimationCanvas';
 import { PromptComposer } from './PromptComposer';
@@ -272,6 +273,35 @@ export const WorkspaceView: React.FC<WorkspaceViewProps> = ({
                     <p className="text-sm sm:text-base text-slate-200 leading-relaxed max-w-3xl">
                       {msg.content}
                     </p>
+
+                    {msg.creationPlan && (
+                      <div className="max-w-3xl rounded-xl border border-cyan-400/20 bg-slate-950/55 p-4 space-y-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 text-sm font-semibold text-cyan-200">
+                            <Sparkles className="w-4 h-4" />
+                            VYROXX Creation Director
+                          </div>
+                          <span className="text-[11px] uppercase tracking-wide text-slate-400">
+                            {msg.creationPlan.renderMode} pipeline
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {msg.creationPlan.decisions.map((decision) => (
+                            <span key={decision.capability} title={decision.reason} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-200">
+                              {decision.capability.replace(/-/g, ' ')}
+                            </span>
+                          ))}
+                        </div>
+                        {msg.creationPlan.recommendedAssist !== 'local-render' && (
+                          <p className="text-xs text-amber-200">
+                            Suggested support: {msg.creationPlan.recommendedAssist === 'video-model' ? 'External video model may be needed' : 'External image model may help create source assets'}.
+                          </p>
+                        )}
+                        {msg.creationPlan.notes.map((note, index) => (
+                          <p key={index} className="text-xs text-slate-400">{note}</p>
+                        ))}
+                      </div>
+                    )}
 
                     {msg.status === 'failed' ? (
                       <div className="max-w-xl rounded-2xl p-5 bg-rose-950/40 border border-rose-500/40 flex flex-wrap items-center justify-between gap-4">

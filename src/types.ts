@@ -1,4 +1,5 @@
 import { AnimationScenePlan, VisualContinuityBible } from './shared/sceneSchema';
+import type { CreationExecutionPlan } from './engine/capabilities/capabilityEngine';
 
 export type AuthView = 'welcome' | 'login' | 'signup' | 'verify-email' | 'forgot-password' | 'age-consent';
 
@@ -22,6 +23,7 @@ export interface ChatMessage {
   timestamp: string;
   attachments?: AttachedFileItem[];
   scenePlan?: AnimationScenePlan;
+  creationPlan?: CreationExecutionPlan;
   jobId?: string;
   versionNumber?: number;
   status?: 'generating' | 'completed' | 'failed';
