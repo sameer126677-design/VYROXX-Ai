@@ -212,7 +212,35 @@ async function main() {
     }
   );
 
-  // 3. Visual Continuity Preservation Across Follow-Ups vs New Projects
+  // 3. Deterministic Scene Quality Validation
+  await runTest(
+    'Scene Quality: Reject duplicate identifiers, duration drift, and render-mode mismatches',
+    () => {
+      const duplicateSceneId = buildValidApocalypsePlan();
+      duplicateSceneId.scenes.push({
+        ...structuredClone(duplicateSceneId.scenes[0]),
+        title: 'Second scene with duplicate id',
+      });
+      duplicateSceneId.totalDurationSec = 16;
+      assert.equal(validateScenePlan(duplicateSceneId).ok, false);
+
+      const duplicateElementId = buildValidApocalypsePlan();
+      duplicateElementId.scenes[0].elements[1].id = duplicateElementId.scenes[0].elements[0].id;
+      assert.equal(validateScenePlan(duplicateElementId).ok, false);
+
+      const durationDrift = buildValidApocalypsePlan();
+      durationDrift.totalDurationSec = 7;
+      assert.equal(validateScenePlan(durationDrift).ok, false);
+
+      const renderModeMismatch = buildValidApocalypsePlan({ renderMode: '3d' });
+      assert.equal(validateScenePlan(renderModeMismatch).ok, false);
+
+      const validPlan = buildValidApocalypsePlan();
+      assert.equal(validateScenePlan(validPlan).ok, true);
+    }
+  );
+
+  // 4. Visual Continuity Preservation Across Follow-Ups vs New Projects
   await runTest(
     'Visual Continuity: Preserve character bible on follow-up edits while isolating new projects',
     () => {
