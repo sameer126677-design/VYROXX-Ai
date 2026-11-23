@@ -1,4 +1,5 @@
 import { auth } from './firebase';
+import { CreationExecutionPlan } from '../engine/capabilities/capabilityEngine';
 import {
   AnimationScenePlan,
   normalizeScenePlan,
@@ -33,6 +34,7 @@ export interface PlanSceneRequest {
 export interface PlanSceneResponse {
   assistantMessage: string;
   scenePlan: AnimationScenePlan;
+  creationPlan: CreationExecutionPlan;
 }
 
 export const AI_BUSY_FRIENDLY_MESSAGE =
@@ -150,9 +152,18 @@ export async function planAnimationScene(
       ? bodyObj.assistantMessage.trim()
       : 'Your animation scene plan has been generated.';
 
+  const creationPlan = bodyObj.creationPlan as CreationExecutionPlan | undefined;
+
   return {
     assistantMessage,
     scenePlan: normalizedPlan.data,
+    creationPlan: creationPlan ?? {
+      version: 1,
+      renderMode: normalizedPlan.data.renderMode === '3d' ? '3d' : '2d',
+      recommendedAssist: 'local-render',
+      decisions: [],
+      notes: ['Execution metadata was not returned by the server.'],
+    },
   };
 }
 

@@ -1,3 +1,4 @@
+import { buildCreationExecutionPlan, CreationExecutionPlan } from './src/engine/capabilities/capabilityEngine';
 import {
   AnimationScenePlan,
   createDefaultVisualContinuity,
@@ -61,6 +62,7 @@ export type AiPlanSceneResult =
       model: string;
       assistantMessage: string;
       scenePlan: AnimationScenePlan;
+      creationPlan: CreationExecutionPlan;
     }
   | {
       ok: false;
@@ -742,6 +744,7 @@ export async function generateAnimationScenePlan(
         model: item.model,
         assistantMessage: attemptResult.assistantMessage,
         scenePlan: attemptResult.scenePlan,
+        creationPlan: buildCreationExecutionPlan(input.prompt, attemptResult.scenePlan),
       };
     }
 

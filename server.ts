@@ -289,6 +289,7 @@ export function createVyroxxApiApp(options: CreateVyroxxAppOptions = {}) {
         res.json({
           assistantMessage: result.assistantMessage,
           scenePlan: result.scenePlan,
+          creationPlan: result.creationPlan,
         });
         return;
       } catch (err: unknown) {
