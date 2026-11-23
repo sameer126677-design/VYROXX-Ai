@@ -477,9 +477,9 @@ export function createVyroxxApiApp(options: CreateVyroxxAppOptions = {}) {
 
 async function startServer() {
   const { app, startupConfig } = createVyroxxApiApp();
-  if (!startupConfig.hasOpenrouterApiKey && !startupConfig.hasCodecraftApiKey) {
+  if (!startupConfig.hasCodecraftApiKey) {
     console.warn(
-      '[VYROXX] Warning: Neither OPENROUTER_API_KEY nor CODECRAFT_API_KEY is configured; AI scene planning will return 503 until at least one is set.'
+      '[VYROXX] Warning: CODECRAFT_API_KEY is not configured; Claude scene planning will return 503.'
     );
   }
 
