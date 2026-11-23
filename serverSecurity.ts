@@ -15,7 +15,6 @@ export interface RuntimeSecurityConfig {
   projectId: string;
   isProd: boolean;
   allowedOrigins: Set<string>;
-  hasOpenrouterApiKey: boolean;
   hasCodecraftApiKey: boolean;
 }
 
@@ -44,12 +43,6 @@ export function validateStartupConfig(
 
   const isProd = env.NODE_ENV === 'production';
   const allowedOrigins = buildAllowedOrigins(env, isProd);
-  const hasOpenrouterApiKey = Boolean(
-    env.OPENROUTER_API_KEY &&
-      env.OPENROUTER_API_KEY.trim().length > 10 &&
-      env.OPENROUTER_API_KEY !== 'MY_OPENROUTER_API_KEY' &&
-      env.OPENROUTER_API_KEY !== 'OPENROUTER_API_KEY'
-  );
   const hasCodecraftApiKey = Boolean(
     env.CODECRAFT_API_KEY &&
       env.CODECRAFT_API_KEY.trim().length > 10 &&
@@ -61,7 +54,6 @@ export function validateStartupConfig(
     projectId: parsed.projectId,
     isProd,
     allowedOrigins,
-    hasOpenrouterApiKey,
     hasCodecraftApiKey,
   };
 }
