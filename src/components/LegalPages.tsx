@@ -53,7 +53,7 @@ export const LegalPageView: React.FC<LegalPageProps> = ({ page, onBack }) => {
               project metadata, chat history, and uploaded media assets. Data is processed
               strictly to authenticate your session, persist your creative projects in
               isolated Cloud Firestore storage, and generate structured animation scene
-              plans via server-side OpenRouter and CodeCraft AI APIs.
+              plans via server-side CodeCraft AI APIs.
             </p>
           </section>
 

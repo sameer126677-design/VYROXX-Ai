@@ -401,7 +401,7 @@ async function main() {
         const port = (server.address() as AddressInfo).port;
         const base = `http://127.0.0.1:${port}`;
 
-        // A. Valid prompt uses the primary Claude model through CodeCraft
+        // A. Valid "Create an apocalypse scene." prompt -> 200 using CHAIN[0] (CodeCraft)
         mode = 'valid_first';
         callsMade = 0;
         chainRequested.length = 0;
@@ -479,7 +479,7 @@ async function main() {
           { url: 'https://codecraftapi.com/v1/chat/completions', model: CHAIN[1].model },
         ]);
 
-        // D. Malformed empty-scenes AI output across all Claude models fails cleanly with 503 user message
+        // D. Malformed empty-scenes AI output across all 3 CHAIN items fails cleanly with 503 user message
         mode = 'always_malformed';
         callsMade = 0;
         chainRequested.length = 0;
@@ -557,6 +557,8 @@ async function main() {
       assert.equal(CODECRAFT_BASE_URL, 'https://codecraftapi.com/v1');
       assert.equal(AI_REQUEST_TIMEOUT_MS, 60_000);
       assert.deepEqual([...CHAIN], [
+        { provider: 'codecraft', model: 'claude-fable-5' },
+        { provider: 'codecraft', model: 'claude-opus-5.5' },
         { provider: 'codecraft', model: 'claude-sonnet-5' },
         { provider: 'codecraft', model: 'claude-opus-5.5' },
         { provider: 'codecraft', model: 'claude-fable-5' },
@@ -739,7 +741,7 @@ async function main() {
         scenario = { kind: 'first_ok' };
         capturedRequests.length = 0;
         capturedLogs.length = 0;
-        const rOk = await postScene('proj_or_ok');
+        const rOk = await postScene('proj_cc_ok');
         assert.equal(rOk.status, 200);
         const dOk = (await rOk.json()) as {
           assistantMessage: string;

@@ -8,14 +8,14 @@
 5. **No Unbounded Arrays or Oversized Strings**: All string fields have explicit `.size()` upper bounds, `preferences` map keys are bounded (`<= 30`), `privacyConsent` conforms strictly to `isValidPrivacyConsent`, and message/version arrays in `chats` are capped (`<= 100` / `<= 50`) to prevent Denial-of-Wallet resource exhaustion.
 6. **Username Uniqueness**: `/usernames/{usernameSlug}` requires `isVerified()` on `get`, prohibits `list` operations (preventing user enumeration), and enforces `uid == request.auth.uid` and `username == '@' + usernameSlug` on writes.
 7. **Terminal Job Locking**: Once a `generationJobs/{jobId}` reaches `'completed'` or `'failed'`, subsequent client updates are blocked.
-8. **Backend Secret & Upload Isolation**: `OPENROUTER_API_KEY` and `CODECRAFT_API_KEY` stay strictly server-side; all protected `/api/*` endpoints verify Firebase ID tokens against Google JWKS (`iss`, `aud`, `exp`, `email_verified === true`), enforce `authedUid === uid` on binary asset routes, and verify file extensions, MIME alignment, magic-byte signatures, and SVG XSS sanitization.
+8. **Backend Secret & Upload Isolation**: `CODECRAFT_API_KEY` stays strictly server-side; all protected `/api/*` endpoints verify Firebase ID tokens against Google JWKS (`iss`, `aud`, `exp`, `email_verified === true`), enforce `authedUid === uid` on binary asset routes, and verify file extensions, MIME alignment, magic-byte signatures, and SVG XSS sanitization.
 
 ## 2. Adversarial Security Test Matrix (Must All Be Blocked / Enforced)
 1. Unauthenticated access to `/api/ai/plan-scene`, `/api/assets/upload`, `/api/assets/file/:uid/:file`, `/api/account/storage` -> HTTP 401.
 2. Forged/unsigned/tampered JWT authentication bypass attempt -> HTTP 401.
 3. Unverified email user (`email_verified: false`) attempting API or Firestore operations -> HTTP 403 / PERMISSION_DENIED.
 4. Authenticated User B attempting cross-user asset access or path traversal (`/api/assets/file/userA/..%2F...`) -> HTTP 400 / 403.
-5. Client bundle (`src/`, `index.html`, `dist/`) secret & tracker scan -> zero `OPENROUTER_API_KEY` / `CODECRAFT_API_KEY`, private keys, or session-replay/keylogger trackers.
+5. Client bundle (`src/`, `index.html`, `dist/`) secret & tracker scan -> zero `CODECRAFT_API_KEY`, private keys, or session-replay/keylogger trackers.
 6. Spoofed file upload (HTML/JS disguised as `.png`, SVG with `<script>`/`onload=`, unsupported `.exe`, oversized >20MB) -> rejected by `validateUploadBytes`.
 7. Unauthenticated or cross-user read/list of `/users/{userId}/projects` -> PERMISSION_DENIED.
 8. Creating `/users/{userId}` with `ageConfirmed18Plus: false` or `emailVerified: false` -> PERMISSION_DENIED.
