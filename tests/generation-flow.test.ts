@@ -235,6 +235,13 @@ async function main() {
       const renderModeMismatch = buildValidApocalypsePlan({ renderMode: '3d' });
       assert.equal(validateScenePlan(renderModeMismatch).ok, false);
 
+      const twoDWithSpatialFields = buildValidApocalypsePlan({ renderMode: '2d' });
+      Object.assign(twoDWithSpatialFields.scenes[0].elements[0], {
+        pos3d: { x: 0, y: 0, z: -5 },
+        size3d: { w: 2, h: 3, d: 2 },
+      });
+      assert.equal(validateScenePlan(twoDWithSpatialFields).ok, false);
+
       const validPlan = buildValidApocalypsePlan();
       assert.equal(validateScenePlan(validPlan).ok, true);
     }
