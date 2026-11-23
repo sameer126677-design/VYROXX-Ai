@@ -713,14 +713,28 @@ function drawElement(
 
     case 'character':
     case 'creature': {
-      const matchBible = continuity?.characterBible.find(
-        (b) =>
-          el.label.toLowerCase().includes(b.name.toLowerCase()) ||
-          b.name.toLowerCase().includes(el.label.toLowerCase())
+      const normalizedLabel = el.label.trim().toLowerCase();
+      const matchBible = continuity?.characterBible.find((entry) => {
+        if (el.characterId && entry.id) return el.characterId === entry.id;
+        return normalizedLabel === entry.name.trim().toLowerCase();
+      });
+      // Locked design traits come from the Character Bible. Scene-specific
+      // pose and expression are intentionally allowed to change per shot.
+      const lockedSpec = matchBible?.characterSpec;
+      const sceneSpec = el.characterSpec;
+      const mergedSpec = lockedSpec
+        ? {
+            ...(sceneSpec || {}),
+            ...lockedSpec,
+            ...(sceneSpec?.pose ? { pose: sceneSpec.pose } : {}),
+            ...(sceneSpec?.expression ? { expression: sceneSpec.expression } : {}),
+          }
+        : sceneSpec;
+      const spec: CharacterSpec = hydrateCharacterSpec(
+        mergedSpec,
+        el,
+        matchBible || null
       );
-      const spec: CharacterSpec = el.characterSpec
-        ? el.characterSpec
-        : hydrateCharacterSpec(undefined, el, matchBible || null);
       drawDetailedCharacter(ctx, el, spec, px, py, w, h, t, pulseScale);
       break;
     }

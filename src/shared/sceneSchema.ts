@@ -473,6 +473,7 @@ export const SceneElementSchema = z.object({
     'custom',
   ]),
   label: z.string().min(1).max(80),
+  characterId: z.string().min(1).max(64).optional(),
   x: z.number().min(-0.3).max(1.3),
   y: z.number().min(-0.3).max(1.3),
   scale: z.number().min(0.15).max(3.5),
@@ -575,11 +576,15 @@ export const SceneSegmentSchema = z.object({
 });
 
 export const CharacterBibleEntrySchema = z.object({
+  // Stable identity key shared by this character across every scene.
+  id: z.string().min(1).max(64).optional(),
   name: z.string().min(1).max(60),
   role: z.string().min(1).max(80),
   appearance: z.string().min(1).max(240),
   primaryColor: HexColorSchema,
   secondaryColor: HexColorSchema,
+  // Optional locked visual design; pose/expression remain scene-specific.
+  characterSpec: CharacterSpecSchema.optional(),
 });
 
 export const VisualContinuityBibleSchema = z.object({
@@ -841,12 +846,16 @@ export function normalizeVisualContinuity(
       const e = entry as Record<string, unknown>;
       const name = cleanText(e.name, 60, '');
       if (!name) return null;
+      const id = cleanText(e.id, 64, '');
+      const parsedCharacterSpec = CharacterSpecSchema.safeParse(e.characterSpec);
       return {
+        ...(id ? { id } : {}),
         name,
         role: cleanText(e.role, 80, `Character ${idx + 1}`),
         appearance: cleanText(e.appearance, 240, 'Consistent stylized silhouette'),
         primaryColor: normalizeHexColor(e.primaryColor, '#38bdf8'),
         secondaryColor: normalizeHexColor(e.secondaryColor, '#0f172a'),
+        ...(parsedCharacterSpec.success ? { characterSpec: parsedCharacterSpec.data } : {}),
       };
     })
     .filter((item): item is CharacterBibleEntry => item !== null);
