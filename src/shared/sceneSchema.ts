@@ -2694,6 +2694,14 @@ function getScenePlanQualityIssue(plan: AnimationScenePlan): string | null {
     if (plan.renderMode === '2d' && scene.scene3d) {
       return `Scene ${sceneIndex + 1} contains 3D configuration while renderMode is 2d.`;
     }
+
+    if (plan.renderMode === '2d') {
+      for (const [elementIndex, element] of scene.elements.entries()) {
+        if (element.pos3d || element.rot3d || element.size3d || element.path3d || element.buildingSpec3d || element.productSpec3d) {
+          return `Scene ${sceneIndex + 1}, element ${elementIndex + 1} ("${element.id}") contains 3D-only spatial data while renderMode is 2d.`;
+        }
+      }
+    }
   }
 
   const sceneDuration = plan.scenes.reduce((total, scene) => total + scene.durationSec, 0);
