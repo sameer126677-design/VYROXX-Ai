@@ -9,13 +9,12 @@ import {
 } from './src/shared/sceneSchema';
 
 // ==============================================================================
-// DUAL AI PROVIDERS (OpenAI-compatible Chat Completions — OpenRouter + CodeCraft)
+// CODECRAFT AI PROVIDER (OpenAI-compatible Chat Completions)
 // ==============================================================================
-export const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 export const CODECRAFT_BASE_URL = 'https://codecraftapi.com/v1';
 export const AI_REQUEST_TIMEOUT_MS = 60_000;
 
-export type AiProviderId = 'openrouter' | 'codecraft';
+export type AiProviderId = 'codecraft';
 
 export interface AiChainItem {
   provider: AiProviderId;
@@ -24,10 +23,9 @@ export interface AiChainItem {
 
 // Fallback Chain — tried strictly in this order; edit this array to reorder or swap models
 export const CHAIN: readonly AiChainItem[] = [
-  { provider: 'openrouter', model: 'nvidia/nemotron-3-ultra-550b-a55b:free' },
-  { provider: 'codecraft', model: 'claude-fable-5' },
-  { provider: 'codecraft', model: 'claude-opus-5.5' },
   { provider: 'codecraft', model: 'claude-sonnet-5' },
+  { provider: 'codecraft', model: 'claude-opus-5.5' },
+  { provider: 'codecraft', model: 'claude-fable-5' },
 ] as const;
 
 export const AI_UNAVAILABLE_USER_MESSAGE =
@@ -49,9 +47,7 @@ export interface AiPlanSceneInput {
 
 export interface AiServiceOptions {
   fetchFn?: typeof fetch;
-  openrouterFetch?: typeof fetch;
   codecraftFetch?: typeof fetch;
-  openrouterApiKey?: string;
   codecraftApiKey?: string;
   chain?: readonly AiChainItem[];
   timeoutMs?: number;
@@ -315,18 +311,6 @@ RETURN STRICT JSON ONLY (no extra commentary) matching this exact object structu
 }
 NOTE: Choose "visualStyle" and "renderMode" dynamically to fit the prompt: set "renderMode": "2d" for "vector-motion" charts/graphs/logos/typography, "cartoon-2d", "pixel-retro", and "abstract-generative"; set "renderMode": "3d" for "realistic-pbr", "anime-cel", "low-poly", "stylized-3d", "hologram-shader", spatial environments, physics, custom shaders, and external .glb/.gltf models. Only include matching sub-specs.`;
 
-export function resolveOpenrouterApiKey(override?: string): string {
-  const raw = (override !== undefined ? override : process.env.OPENROUTER_API_KEY ?? '').trim();
-  if (
-    !raw ||
-    raw === 'MY_OPENROUTER_API_KEY' ||
-    raw === 'OPENROUTER_API_KEY'
-  ) {
-    return '';
-  }
-  return raw;
-}
-
 export function resolveCodecraftApiKey(override?: string): string {
   const raw = (override !== undefined ? override : process.env.CODECRAFT_API_KEY ?? '').trim();
   if (
@@ -343,14 +327,6 @@ function getProviderConfig(
   provider: AiProviderId,
   options: AiServiceOptions
 ): { baseUrl: string; apiKey: string; fetchFn: typeof fetch; envKeyName: string } {
-  if (provider === 'openrouter') {
-    return {
-      baseUrl: OPENROUTER_BASE_URL,
-      apiKey: resolveOpenrouterApiKey(options.openrouterApiKey),
-      fetchFn: options.openrouterFetch ?? options.fetchFn ?? fetch,
-      envKeyName: 'OPENROUTER_API_KEY',
-    };
-  }
   return {
     baseUrl: CODECRAFT_BASE_URL,
     apiKey: resolveCodecraftApiKey(options.codecraftApiKey),
@@ -660,7 +636,7 @@ async function tryChatCompletionsProvider(
 
 /**
  * Single centralized entrypoint for all AI chat, planning, editing, and render-plan
- * requests in VYROXX, executed strictly in CHAIN order across OpenRouter & CodeCraft.
+ * requests in VYROXX, executed strictly in CHAIN order through CodeCraft.
  */
 export async function generateAnimationScenePlan(
   input: AiPlanSceneInput,
