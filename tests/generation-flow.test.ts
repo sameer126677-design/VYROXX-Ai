@@ -248,6 +248,53 @@ async function main() {
     }
   );
 
+  // 4. Stable Character Identity Schema & Normalization
+  await runTest(
+    'Character Identity: Preserve stable IDs and locked visual design in the continuity bible',
+    () => {
+      const raw = buildValidApocalypsePlan();
+      raw.visualContinuity.characterBible[0] = {
+        id: 'lead_survivor',
+        name: 'Kael',
+        role: 'Survivor',
+        appearance: 'Blue hooded tactical jacket',
+        primaryColor: '#38bdf8',
+        secondaryColor: '#0f172a',
+        characterSpec: {
+          archetype: 'survivor',
+          pose: 'idle',
+          expression: 'determined',
+          armorStyle: 'hoodie',
+          armorColor: '#38bdf8',
+          secondaryGearColor: '#0f172a',
+          headgear: 'hood',
+          visorColor: '#22d3ee',
+          cloakOrCoat: false,
+          cloakColor: '#0f172a',
+          weaponOrGear: 'backpack',
+          hairColor: '#1e293b',
+          detailLevel: 'high',
+        },
+      };
+      const normalized = normalizeScenePlan(raw);
+      assert.equal(normalized.ok, true);
+      if (normalized.ok) {
+        const character = normalized.data.visualContinuity.characterBible[0];
+        assert.equal(character.id, 'lead_survivor');
+        assert.equal(character.characterSpec?.armorColor, '#38bdf8');
+        assert.equal(character.characterSpec?.headgear, 'hood');
+      }
+
+      // Legacy bible entries without IDs/specs remain valid.
+      const legacy = normalizeScenePlan(buildValidApocalypsePlan());
+      assert.equal(legacy.ok, true);
+      if (legacy.ok) {
+        assert.equal(legacy.data.visualContinuity.characterBible[0].id, undefined);
+        assert.equal(legacy.data.visualContinuity.characterBible[0].characterSpec, undefined);
+      }
+    }
+  );
+
   // 4. Character Pose Schema
   await runTest(
     'Character Pose: Accept the supported kneeling pose',

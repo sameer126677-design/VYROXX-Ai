@@ -149,7 +149,11 @@ CUSTOM 3D OBJECTS ("kind": "custom"):
 STRICT SCHEMA RULES:
 - "planVersion" MUST be 1. All colors MUST be 6-digit hex strings like "#0f172a", "#dc2626", or "#22d3ee".
 - "scenes" must have 1 to 4 rich scenes, each with "durationSec" between 3 and 12, and "totalDurationSec" equal to the sum.
-- When "currentScenePlan" is provided, apply surgical edits directly to "scenePlan.scenes" (visualStyle, shaders, physics, 3D camera angles, positions, paths, character armor, buildings, etc.) and preserve "visualContinuity.characterBible".`;
+- When "currentScenePlan" is provided, apply surgical edits directly to "scenePlan.scenes" (visualStyle, shaders, physics, 3D camera angles, positions, paths, character armor, buildings, etc.) and preserve "visualContinuity.characterBible".
+- CHARACTER IDENTITY LOCK: Every recurring character MUST have one stable "id" in visualContinuity.characterBible (short lowercase slug, e.g. "lead_survivor"). Reuse that exact id as "characterId" on every matching character/creature element in every scene. Never create a second bible entry for the same person under a different name.
+- Lock each recurring character's defining appearance in the bible: silhouette, hair/headgear, armor/clothing style, armorColor, secondaryGearColor, cloak/coat, cloakColor, weaponOrGear, hairColor, and detailLevel. Include a complete "characterSpec" in the bible when the character is important enough to recur. Keep these design traits identical across scenes; vary only pose and expression to fit the action.
+- Every character element must use the matching characterId. Labels may vary descriptively, but identity must not depend on fuzzy label matching. Do not change a character's outfit, palette, archetype, headgear, or signature gear between shots unless the user explicitly requests a redesign.
+- On follow-up edits, preserve existing character bible ids and locked characterSpec values. Update only the requested identity trait; never silently regenerate the whole character design.`;
 
 const STRUCTURED_JSON_FORMAT_ADDENDUM = `
 
@@ -330,7 +334,7 @@ RETURN STRICT JSON ONLY (no extra commentary) matching this exact object structu
       "environmentRules": "Environment consistency rules",
       "lightingStyle": "Lighting consistency description",
       "characterBible": [
-        { "name": "Name", "role": "Role", "appearance": "Appearance", "primaryColor": "#38bdf8", "secondaryColor": "#0f172a" }
+        { "id": "lead_survivor", "name": "Name", "role": "Role", "appearance": "Appearance", "primaryColor": "#38bdf8", "secondaryColor": "#0f172a", "characterSpec": { "archetype": "survivor", "pose": "idle", "expression": "determined", "armorStyle": "hoodie", "armorColor": "#38bdf8", "secondaryGearColor": "#0f172a", "headgear": "hood", "visorColor": "#22d3ee", "cloakOrCoat": false, "cloakColor": "#0f172a", "weaponOrGear": "backpack", "hairColor": "#1e293b", "detailLevel": "high" } }
       ],
       "propReferences": ["Prop 1"]
     }
