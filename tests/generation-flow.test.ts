@@ -285,6 +285,33 @@ async function main() {
         assert.equal(character.characterSpec?.headgear, 'hood');
       }
 
+      // Regression: scene role-label differs from the bible display name.
+      const astronautPlan = buildValidApocalypsePlan();
+      astronautPlan.visualContinuity.characterBible[0] = {
+        id: 'astronaut',
+        name: 'Solo Explorers',
+        role: 'Lead Explorer',
+        appearance: 'White spacesuit with blue trim and visor',
+        primaryColor: '#e2e8f0',
+        secondaryColor: '#0f172a',
+      };
+      astronautPlan.scenes.forEach((scene) => {
+        const hero = scene.elements.find((element) => element.kind === 'character');
+        if (hero) hero.label = 'Astronaut';
+      });
+      const astronautNormalized = normalizeScenePlan(astronautPlan);
+      assert.equal(astronautNormalized.ok, true);
+      if (astronautNormalized.ok) {
+        const astronaut = astronautNormalized.data.scenes[0].elements.find(
+          (element) => element.kind === 'character'
+        );
+        assert.equal(astronaut?.characterId, 'astronaut');
+        assert.ok(
+          astronautNormalized.data.visualContinuity.characterBible[0].characterSpec,
+          'First appearance should establish the missing locked character design'
+        );
+      }
+
       // Legacy bible entries without IDs/specs remain valid.
       const legacy = normalizeScenePlan(buildValidApocalypsePlan());
       assert.equal(legacy.ok, true);

@@ -2377,6 +2377,29 @@ export function normalizeScenePlan(
     options?.fallbackContinuity
   );
 
+  // Safely bridge a scene role-label to a differently named bible entry only
+  // when the whole plan contains one unambiguous recurring character.
+  const rawCharacterLabels = new Set<string>();
+  for (const rawScene of obj.scenes) {
+    if (!rawScene || typeof rawScene !== 'object') continue;
+    const rawElements = (rawScene as Record<string, unknown>).elements;
+    if (!Array.isArray(rawElements)) continue;
+    for (const rawElement of rawElements) {
+      if (!rawElement || typeof rawElement !== 'object') continue;
+      const element = rawElement as Record<string, unknown>;
+      const kind = String(element.kind || '').toLowerCase();
+      if (kind !== 'character' && kind !== 'creature') continue;
+      const characterLabel = cleanText(element.label, 80, '').trim().toLowerCase();
+      if (characterLabel) rawCharacterLabels.add(characterLabel);
+    }
+  }
+  const soleCharacterAlias =
+    preliminaryContinuity.characterBible.length === 1 && rawCharacterLabels.size === 1
+      ? rawCharacterLabels.values().next().value
+      : undefined;
+  const soleCharacterEntry =
+    soleCharacterAlias ? preliminaryContinuity.characterBible[0] : undefined;
+
   const normalizedScenes: SceneSegment[] = [];
   for (let sIdx = 0; sIdx < Math.min(6, obj.scenes.length); sIdx++) {
     const rawSeg = obj.scenes[sIdx];
@@ -2446,10 +2469,16 @@ export function normalizeScenePlan(
         const chartSpec = normalizeChartSpec(el.chartSpec, el, label);
         if (chartSpec) baseEl.chartSpec = chartSpec;
       } else if (kind === 'character' || kind === 'creature') {
-        const matchBible = preliminaryContinuity.characterBible.find((entry) => {
-          if (baseEl.characterId && entry.id) return baseEl.characterId === entry.id;
-          return label.trim().toLowerCase() === entry.name.trim().toLowerCase();
-        });
+        const normalizedLabel = label.trim().toLowerCase();
+        const matchBible =
+          preliminaryContinuity.characterBible.find(
+            (entry) => Boolean(baseEl.characterId && entry.id && baseEl.characterId === entry.id)
+          ) ||
+          preliminaryContinuity.characterBible.find(
+            (entry) => normalizedLabel === entry.name.trim().toLowerCase()
+          ) ||
+          (soleCharacterAlias === normalizedLabel ? soleCharacterEntry : undefined);
+        if (matchBible?.id) baseEl.characterId = matchBible.id;
         const lockedSpec = matchBible?.characterSpec;
         const sceneSpec =
           el.characterSpec && typeof el.characterSpec === 'object'
@@ -2686,6 +2715,41 @@ export function normalizeScenePlan(
     };
   }
 
+  // Establish a missing locked design from the first linked appearance, then
+  // preserve it across shots while allowing pose and expression to vary.
+  const lockedBible = preliminaryContinuity.characterBible.map((entry) => {
+    if (entry.characterSpec) return entry;
+    const firstAppearance = normalizedScenes
+      .flatMap((scene) => scene.elements)
+      .find((element) =>
+        (element.kind === 'character' || element.kind === 'creature') &&
+        ((entry.id && element.characterId === entry.id) ||
+          element.label.trim().toLowerCase() === entry.name.trim().toLowerCase() ||
+          (soleCharacterEntry === entry && soleCharacterAlias === element.label.trim().toLowerCase()))
+      );
+    return firstAppearance?.characterSpec
+      ? { ...entry, characterSpec: firstAppearance.characterSpec }
+      : entry;
+  });
+  for (const scene of normalizedScenes) {
+    for (const element of scene.elements) {
+      if (element.kind !== 'character' && element.kind !== 'creature') continue;
+      const linkedEntry = lockedBible.find((entry) =>
+        (element.characterId && entry.id && element.characterId === entry.id) ||
+        element.label.trim().toLowerCase() === entry.name.trim().toLowerCase() ||
+        (soleCharacterEntry === entry && soleCharacterAlias === element.label.trim().toLowerCase())
+      );
+      if (!linkedEntry) continue;
+      if (linkedEntry.id) element.characterId = linkedEntry.id;
+      if (!linkedEntry.characterSpec || !element.characterSpec) continue;
+      element.characterSpec = {
+        ...linkedEntry.characterSpec,
+        pose: element.characterSpec.pose,
+        expression: element.characterSpec.expression,
+      };
+    }
+  }
+
   const summedDuration = normalizedScenes.reduce((acc, s) => acc + s.durationSec, 0);
   const candidate: AnimationScenePlan = {
     planVersion: 1,
@@ -2702,7 +2766,7 @@ export function normalizeScenePlan(
     fps: Math.round(clampNum(options?.fps ?? obj.fps, 12, 120, 30)),
     totalDurationSec: clampNum(summedDuration, 2, 60, 5),
     scenes: normalizedScenes,
-    visualContinuity: preliminaryContinuity,
+    visualContinuity: { ...preliminaryContinuity, characterBible: lockedBible },
   };
 
   return validateScenePlan(candidate);
