@@ -2671,6 +2671,39 @@ export function normalizeScenePlan(
   return validateScenePlan(candidate);
 }
 
+function getScenePlanQualityIssue(plan: AnimationScenePlan): string | null {
+  const sceneIds = new Set<string>();
+
+  for (const [sceneIndex, scene] of plan.scenes.entries()) {
+    if (sceneIds.has(scene.id)) {
+      return `Scene ${sceneIndex + 1} has a duplicate scene id ("${scene.id}").`;
+    }
+    sceneIds.add(scene.id);
+
+    const elementIds = new Set<string>();
+    for (const [elementIndex, element] of scene.elements.entries()) {
+      if (elementIds.has(element.id)) {
+        return `Scene ${sceneIndex + 1} has a duplicate element id ("${element.id}") at element ${elementIndex + 1}.`;
+      }
+      elementIds.add(element.id);
+    }
+
+    if (plan.renderMode === '3d' && !scene.scene3d) {
+      return `Scene ${sceneIndex + 1} is missing its 3D scene configuration while renderMode is 3d.`;
+    }
+    if (plan.renderMode === '2d' && scene.scene3d) {
+      return `Scene ${sceneIndex + 1} contains 3D configuration while renderMode is 2d.`;
+    }
+  }
+
+  const sceneDuration = plan.scenes.reduce((total, scene) => total + scene.durationSec, 0);
+  if (Math.abs(sceneDuration - plan.totalDurationSec) > 0.05) {
+    return `Scene durations total ${sceneDuration.toFixed(2)}s, but totalDurationSec is ${plan.totalDurationSec.toFixed(2)}s.`;
+  }
+
+  return null;
+}
+
 export function validateScenePlan(raw: unknown): {
   ok: true;
   data: AnimationScenePlan;
@@ -2686,5 +2719,11 @@ export function validateScenePlan(raw: unknown): {
       error: `Scene validation failed at ${issue?.path?.join('.') || 'root'}: ${issue?.message || 'Invalid schema'}`,
     };
   }
+
+  const qualityIssue = getScenePlanQualityIssue(parsed.data);
+  if (qualityIssue) {
+    return { ok: false, error: `Scene quality validation failed: ${qualityIssue}` };
+  }
+
   return { ok: true, data: parsed.data };
 }

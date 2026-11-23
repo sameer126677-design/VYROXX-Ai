@@ -35,6 +35,32 @@ const PORT = 3000;
 const ROOT_DIR = process.cwd();
 const DEFAULT_STORAGE_ROOT = path.join(ROOT_DIR, '.vyroxx_storage');
 
+const REFERENCE_IMAGE_MAX_BYTES = 4 * 1024 * 1024;
+const REFERENCE_IMAGES_TOTAL_MAX_BYTES = 5 * 1024 * 1024;
+
+async function loadReferenceImages(storageRoot: string, uid: string, paths: string[]) {
+  if (paths.length > 3) throw new Error('You can attach up to 3 reference images per generation.');
+  const images: Array<{ mimeType: 'image/png' | 'image/jpeg' | 'image/webp'; base64Data: string; fileName: string }> = [];
+  let totalBytes = 0;
+  for (const storagePath of paths) {
+    const [ownerUid, fileName] = storagePath.split('/');
+    if (ownerUid !== uid || !fileName) throw new Error('Reference image access denied.');
+    const targetPath = resolveSafeUserFilePath(storageRoot, uid, fileName);
+    if (!targetPath || !fs.existsSync(targetPath)) throw new Error('Reference image was not found. Please upload it again.');
+    const ext = path.extname(fileName).toLowerCase();
+    const mimeType = ext === '.png' ? 'image/png' : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : ext === '.webp' ? 'image/webp' : null;
+    if (!mimeType) throw new Error('Reference images must be PNG, JPG, or WebP.');
+    const buffer = await fs.promises.readFile(targetPath);
+    if (!buffer.length || buffer.length > REFERENCE_IMAGE_MAX_BYTES) throw new Error('Each reference image must be 4 MB or smaller.');
+    totalBytes += buffer.length;
+    if (totalBytes > REFERENCE_IMAGES_TOTAL_MAX_BYTES) throw new Error('Reference images are too large. Keep the combined size under 5 MB.');
+    const validation = validateUploadBytes(fileName, mimeType, buffer);
+    if (!validation.ok) throw new Error(`Invalid reference image: ${validation.error}`);
+    images.push({ mimeType, base64Data: buffer.toString('base64'), fileName });
+  }
+  return images;
+}
+
 const DEFAULT_FIREBASE_JWKS = createRemoteJWKSet(
   new URL(
     'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'
@@ -230,6 +256,7 @@ export function createVyroxxApiApp(options: CreateVyroxxAppOptions = {}) {
       activeGenerations.add(lockKey);
 
       try {
+        const referenceImages = await loadReferenceImages(storageRoot, uid, data.referenceImagePaths ?? []);
         const result = await generateAnimationScenePlan(
           {
             prompt: data.prompt,
@@ -241,6 +268,7 @@ export function createVyroxxApiApp(options: CreateVyroxxAppOptions = {}) {
             requestedFps: data.requestedFps,
             requestedBackground: data.requestedBackground,
             attachmentsSummary: data.attachmentsSummary,
+            referenceImages,
             aiResponseStyle: data.aiResponseStyle,
             isRegenerate: data.isRegenerate,
           },
@@ -479,7 +507,7 @@ async function startServer() {
   const { app, startupConfig } = createVyroxxApiApp();
   if (!startupConfig.hasCodecraftApiKey) {
     console.warn(
-      '[VYROXX] Warning: CODECRAFT_API_KEY is not configured; AI scene planning will return 503 until it is set.'
+      '[VYROXX] Warning: CODECRAFT_API_KEY is not configured; Claude scene planning will return 503.'
     );
   }
 

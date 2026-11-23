@@ -262,6 +262,7 @@ export const PlanRequestSchema = z.object({
   requestedFps: z.number().int().min(12).max(120).optional(),
   requestedBackground: z.enum(['scene', 'solid', 'transparent']).optional(),
   attachmentsSummary: z.array(z.string().max(160)).max(8).optional(),
+  referenceImagePaths: z.array(z.string().max(320).regex(/^[a-zA-Z0-9_-]{1,128}\/[a-zA-Z0-9._-]{1,200}$/)).max(3).optional(),
   aiResponseStyle: z.enum(['concise', 'balanced', 'detailed']).optional(),
   isRegenerate: z.boolean().optional(),
 });
