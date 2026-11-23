@@ -324,7 +324,6 @@ export function resolveCodecraftApiKey(override?: string): string {
 }
 
 function getProviderConfig(
-  provider: AiProviderId,
   options: AiServiceOptions
 ): { baseUrl: string; apiKey: string; fetchFn: typeof fetch; envKeyName: string } {
   return {
@@ -682,7 +681,7 @@ export async function generateAnimationScenePlan(
 
   for (let i = 0; i < activeChain.length; i++) {
     const item = activeChain[i];
-    const providerCfg = getProviderConfig(item.provider, options);
+    const providerCfg = getProviderConfig(options);
 
     if (!providerCfg.apiKey) {
       console.warn(
