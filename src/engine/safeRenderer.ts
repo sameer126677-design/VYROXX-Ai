@@ -561,6 +561,33 @@ function drawElement(
         ctx.lineTo(mx + mw * 0.5, groundY + 4);
         ctx.closePath();
         ctx.fill();
+
+        // Faceted ridge planes give the silhouette readable terrain depth.
+        ctx.fillStyle = withAlpha(el.accentColor, 0.24);
+        ctx.beginPath();
+        ctx.moveTo(mx, groundY - mh);
+        ctx.lineTo(mx - mw * 0.5, groundY + 4);
+        ctx.lineTo(mx - mw * 0.08, groundY - mh * 0.28);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = withAlpha('#020617', 0.16);
+        ctx.beginPath();
+        ctx.moveTo(mx, groundY - mh);
+        ctx.lineTo(mx + mw * 0.5, groundY + 4);
+        ctx.lineTo(mx + mw * 0.12, groundY - mh * 0.34);
+        ctx.closePath();
+        ctx.fill();
+
+        // Broken strata lines add subtle texture without overpowering the scene.
+        ctx.strokeStyle = withAlpha(el.accentColor, 0.18);
+        ctx.lineWidth = Math.max(1, unit * 0.012);
+        ctx.beginPath();
+        ctx.moveTo(mx - mw * 0.24, groundY - mh * 0.28);
+        ctx.lineTo(mx - mw * 0.04, groundY - mh * 0.2);
+        ctx.moveTo(mx + mw * 0.08, groundY - mh * 0.48);
+        ctx.lineTo(mx + mw * 0.28, groundY - mh * 0.39);
+        ctx.stroke();
       }
       break;
     }
