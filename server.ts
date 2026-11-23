@@ -246,9 +246,7 @@ export function createVyroxxApiApp(options: CreateVyroxxAppOptions = {}) {
           },
           {
             fetchFn: options.fetchFn,
-            openrouterFetch: options.openrouterFetch,
             codecraftFetch: options.codecraftFetch,
-            openrouterApiKey: options.openrouterApiKey,
             codecraftApiKey: options.codecraftApiKey,
             chain: options.chain,
             timeoutMs: options.timeoutMs,
