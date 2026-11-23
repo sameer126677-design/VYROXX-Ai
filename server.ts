@@ -86,9 +86,7 @@ export interface CreateVyroxxAppOptions {
   rateLimiter?: SlidingWindowRateLimiter;
   ipRateLimitMax?: number;
   fetchFn?: typeof fetch;
-  openrouterFetch?: typeof fetch;
   codecraftFetch?: typeof fetch;
-  openrouterApiKey?: string;
   codecraftApiKey?: string;
   chain?: readonly AiChainItem[];
   timeoutMs?: number;
