@@ -911,7 +911,18 @@ export function mergeVisualContinuity(
   for (const ch of normalizedNext.characterBible) {
     const key = ch.name.trim().toLowerCase();
     const prev = mergedMap.get(key);
-    mergedMap.set(key, prev ? { ...prev, ...ch } : ch);
+    mergedMap.set(
+      key,
+      prev
+        ? {
+            ...prev,
+            ...ch,
+            // Identity keys and locked designs survive ordinary follow-up generations.
+            ...(prev.id ? { id: prev.id } : {}),
+            ...(prev.characterSpec ? { characterSpec: prev.characterSpec } : {}),
+          }
+        : ch
+    );
   }
 
   const mergedProps = Array.from(
