@@ -1,0 +1,3 @@
+Temporary GitHub connector write-permission test.
+Branch: phase1/claude-model-routing
+Purpose: verify repository write access. This file should be deleted immediately after verification.
