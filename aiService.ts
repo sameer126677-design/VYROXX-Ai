@@ -690,6 +690,7 @@ export async function generateAnimationScenePlan(
   const activeChain =
     options.chain && options.chain.length > 0 ? options.chain : CHAIN;
   const requestStartMs = Date.now();
+  let visionUnsupported = false;
 
   for (let i = 0; i < activeChain.length; i++) {
     const item = activeChain[i];
@@ -730,6 +731,9 @@ export async function generateAnimationScenePlan(
       };
     }
 
+    if (input.referenceImages?.length && /unsupported_content|does not support image|vision capability/i.test(attemptResult.reason)) {
+      visionUnsupported = true;
+    }
     console.warn(
       `[VYROXX AI] Failed: provider=${item.provider} model=${item.model} reason="${attemptResult.reason}"`
     );
@@ -740,6 +744,14 @@ export async function generateAnimationScenePlan(
       .map((c) => `${c.provider}:${c.model}`)
       .join(', ')}) in ${Math.max(1, Date.now() - requestStartMs)}ms.`
   );
+  if (visionUnsupported) {
+    return {
+      ok: false,
+      status: 422,
+      error: 'The configured CodeCraft Claude models do not currently accept image input. Choose a model that lists the Vision capability in CodeCraft, then retry with your reference image.',
+    };
+  }
+
   return {
     ok: false,
     status: 503,
