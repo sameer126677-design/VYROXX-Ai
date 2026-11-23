@@ -5,6 +5,7 @@ import path from 'node:path';
 import type { AddressInfo } from 'node:net';
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from 'jose';
 import {
+  CharacterSpecSchema,
   createDefaultVisualContinuity,
   EMPTY_VISUAL_CONTINUITY,
   mergeVisualContinuity,
@@ -244,6 +245,15 @@ async function main() {
 
       const validPlan = buildValidApocalypsePlan();
       assert.equal(validateScenePlan(validPlan).ok, true);
+    }
+  );
+
+  // 4. Character Pose Schema
+  await runTest(
+    'Character Pose: Accept the supported kneeling pose',
+    () => {
+      assert.equal(CharacterSpecSchema.shape.pose.safeParse('kneeling').success, true);
+      assert.equal(CharacterSpecSchema.shape.pose.safeParse('unsupported-pose').success, false);
     }
   );
 
