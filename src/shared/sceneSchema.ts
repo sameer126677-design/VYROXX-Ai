@@ -2509,14 +2509,14 @@ export function normalizeScenePlan(
         baseEl.logoSpec = normalizeLogoSpec(el.logoSpec, label);
       } else if (kind === 'road') {
         baseEl.roadSpec = normalizeRoadSpec(el.roadSpec, variant);
-      } else if (kind === 'building') {
+      } else if (kind === 'building' && resolvedRenderMode === '3d') {
         baseEl.buildingSpec3d = normalizeBuildingSpec3D(
           el.buildingSpec3d,
           label,
           variant,
           accentColor
         );
-      } else if (kind === 'product') {
+      } else if (kind === 'product' && resolvedRenderMode === '3d') {
         baseEl.productSpec3d = normalizeProductSpec3D(el.productSpec3d, label);
       } else if (kind === 'custom' && normalizedCustomSpec) {
         baseEl.customModelSpec = normalizedCustomSpec;
@@ -2568,7 +2568,7 @@ export function normalizeScenePlan(
       const normAsset = normalizeAssetRef(el.assetRef);
       if (normAsset) baseEl.assetRef = normAsset;
 
-      if (el.pos3d && typeof el.pos3d === 'object') {
+      if (resolvedRenderMode === '3d' && el.pos3d && typeof el.pos3d === 'object') {
         baseEl.pos3d = normalizeVector3(
           el.pos3d,
           defaultPos3DFromElement(baseEl)
@@ -2577,7 +2577,7 @@ export function normalizeScenePlan(
         baseEl.pos3d = defaultPos3DFromElement(baseEl);
       }
 
-      if (el.rot3d && typeof el.rot3d === 'object') {
+      if (resolvedRenderMode === '3d' && el.rot3d && typeof el.rot3d === 'object') {
         baseEl.rot3d = normalizeVector3(
           el.rot3d,
           { x: 0, y: 0, z: 0 },
@@ -2585,7 +2585,7 @@ export function normalizeScenePlan(
         );
       }
 
-      if (el.size3d && typeof el.size3d === 'object') {
+      if (resolvedRenderMode === '3d' && el.size3d && typeof el.size3d === 'object') {
         const s3 = el.size3d as Record<string, unknown>;
         baseEl.size3d = {
           w: clampNum(s3.w, 0.1, 200, 2),
@@ -2594,7 +2594,7 @@ export function normalizeScenePlan(
         };
       }
 
-      if (Array.isArray(el.path3d) && el.path3d.length > 0) {
+      if (resolvedRenderMode === '3d' && Array.isArray(el.path3d) && el.path3d.length > 0) {
         const rawPath3d = el.path3d;
         const normalizedPath: Keyframe3DSpec[] = rawPath3d
           .slice(0, 16)
