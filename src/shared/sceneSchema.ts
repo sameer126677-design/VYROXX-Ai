@@ -1288,6 +1288,7 @@ export function hydrateCharacterSpec(
         'combat',
         'floating',
         'chasing',
+        'kneeling',
       ] as const,
       defaultPose
     ),
@@ -2403,6 +2404,9 @@ export function normalizeScenePlan(
         id: cleanText(el.id, 64, `el_${sIdx + 1}_${eIdx + 1}`),
         kind,
         label,
+        ...(typeof el.characterId === 'string' && /^[a-zA-Z0-9_-]{1,64}$/.test(el.characterId.trim())
+          ? { characterId: el.characterId.trim() }
+          : {}),
         x,
         y,
         scale: clampNum(el.scale, 0.15, 3.5, 1),
@@ -2431,13 +2435,25 @@ export function normalizeScenePlan(
         const chartSpec = normalizeChartSpec(el.chartSpec, el, label);
         if (chartSpec) baseEl.chartSpec = chartSpec;
       } else if (kind === 'character' || kind === 'creature') {
-        const matchBible = preliminaryContinuity.characterBible.find(
-          (b) =>
-            label.toLowerCase().includes(b.name.toLowerCase()) ||
-            b.name.toLowerCase().includes(label.toLowerCase())
-        );
+        const matchBible = preliminaryContinuity.characterBible.find((entry) => {
+          if (baseEl.characterId && entry.id) return baseEl.characterId === entry.id;
+          return label.trim().toLowerCase() === entry.name.trim().toLowerCase();
+        });
+        const lockedSpec = matchBible?.characterSpec;
+        const sceneSpec =
+          el.characterSpec && typeof el.characterSpec === 'object'
+            ? (el.characterSpec as Record<string, unknown>)
+            : {};
+        const mergedSpec = lockedSpec
+          ? {
+              ...sceneSpec,
+              ...lockedSpec,
+              ...(sceneSpec.pose ? { pose: sceneSpec.pose } : {}),
+              ...(sceneSpec.expression ? { expression: sceneSpec.expression } : {}),
+            }
+          : el.characterSpec;
         baseEl.characterSpec = hydrateCharacterSpec(
-          el.characterSpec,
+          mergedSpec,
           baseEl,
           matchBible || null
         );
