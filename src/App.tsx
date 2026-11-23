@@ -451,7 +451,8 @@ export default function App() {
     uid: string,
     projectId: string,
     rawFiles: File[]
-  ): Promise<void> => {
+  ): Promise<string[]> => {
+    const referenceImagePaths: string[] = [];
     for (const file of rawFiles) {
       if (file.size > MAX_UPLOAD_BYTES) {
         throw new Error(`Attachment "${file.name}" exceeds the 20 MB upload limit.`);
@@ -485,6 +486,10 @@ export default function App() {
       }
 
       const uploaded = await uploadAssetBinary(file);
+      const normalizedMime = (file.type || '').toLowerCase().split(';')[0].trim();
+      if (['image/png', 'image/jpeg', 'image/webp'].includes(normalizedMime) && referenceImagePaths.length < 3) {
+        referenceImagePaths.push(uploaded.storagePath);
+      }
       await createAssetRecord(uid, {
         name: file.name.replace(/\.[^/.]+$/, '').slice(0, 160) || file.name,
         category: inferAssetCategoryFromFile(file),
@@ -499,6 +504,7 @@ export default function App() {
         textPreview,
       });
     }
+    return referenceImagePaths;
   };
 
   // Core AI Generation Pipeline
@@ -512,6 +518,7 @@ export default function App() {
     existingContinuity: ProjectRecord['visualContinuity'];
     currentScenePlan: AnimationScenePlan | null;
     attachmentsSummary?: string[];
+    referenceImagePaths?: string[];
     isRegenerate?: boolean;
   }) => {
     const {
@@ -524,6 +531,7 @@ export default function App() {
       existingContinuity,
       currentScenePlan,
       attachmentsSummary,
+      referenceImagePaths,
       isRegenerate,
     } = params;
 
@@ -586,6 +594,7 @@ export default function App() {
           requestedBackground:
             settings.defaultBackground === 'Transparent' ? 'transparent' : 'scene',
           attachmentsSummary,
+          referenceImagePaths,
           aiResponseStyle: settings.aiResponseStyle,
           isRegenerate,
         });
@@ -736,9 +745,9 @@ export default function App() {
         [userMsg]
       );
 
-      if (rawFiles.length > 0) {
-        await uploadAttachedFilesForProject(firebaseUser.uid, projectId, rawFiles);
-      }
+      const referenceImagePaths = rawFiles.length > 0
+        ? await uploadAttachedFilesForProject(firebaseUser.uid, projectId, rawFiles)
+        : [];
 
       setPendingAttachments([]);
       setActiveProjectId(projectId);
@@ -755,6 +764,7 @@ export default function App() {
         existingContinuity: createDefaultVisualContinuity(),
         currentScenePlan: null,
         attachmentsSummary: attachments.map((a) => `${a.name} (${a.type})`),
+        referenceImagePaths,
       });
     } catch (err) {
       setHomeSubmitting(false);
@@ -776,9 +786,9 @@ export default function App() {
 
     const uid = firebaseUser.uid;
     try {
-      if (rawFiles.length > 0) {
-        await uploadAttachedFilesForProject(uid, activeProject.id, rawFiles);
-      }
+      const referenceImagePaths = rawFiles.length > 0
+        ? await uploadAttachedFilesForProject(uid, activeProject.id, rawFiles)
+        : [];
 
       const userMsg: ChatMessage = {
         id: `msg_u_${Date.now()}`,
@@ -813,6 +823,7 @@ export default function App() {
         existingContinuity: normalizeVisualContinuity(activeProject.visualContinuity),
         currentScenePlan: activeProject.latestScenePlan,
         attachmentsSummary: attachments.map((a) => `${a.name} (${a.type})`),
+        referenceImagePaths,
       });
     } catch (err) {
       setWorkspaceError(

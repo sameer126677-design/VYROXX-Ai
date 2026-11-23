@@ -25,6 +25,7 @@ export interface PlanSceneRequest {
   requestedFps?: number;
   requestedBackground?: 'scene' | 'solid' | 'transparent';
   attachmentsSummary?: string[];
+  referenceImagePaths?: string[];
   aiResponseStyle?: 'concise' | 'balanced' | 'detailed';
   isRegenerate?: boolean;
 }
