@@ -1281,6 +1281,7 @@ function drawDetailedCharacter(
     el.variant === 'chasing';
   const isWalking = spec.pose === 'walking' || el.variant === 'walking';
   const isFloating = spec.pose === 'floating';
+  const isKneeling = spec.pose === 'kneeling';
   const dir = el.motion.direction >= 0 ? 1 : -1;
   const strideFreq =
     spec.pose === 'sprinting'
@@ -1297,9 +1298,11 @@ function drawDetailedCharacter(
     const phase = t * strideFreq + i * 1.15;
 
     const swingAmp = isRunning ? 0.68 : isWalking ? 0.42 : 0.05;
-    const legA = isFloating ? 0.15 : Math.sin(phase) * swingAmp;
-    const legB = isFloating ? -0.1 : Math.sin(phase + Math.PI) * swingAmp;
-    const armA = isRunning
+    const legA = isKneeling ? 0.55 : isFloating ? 0.15 : Math.sin(phase) * swingAmp;
+    const legB = isKneeling ? -0.35 : isFloating ? -0.1 : Math.sin(phase + Math.PI) * swingAmp;
+    const armA = isKneeling
+      ? 0.48
+      : isRunning
       ? Math.sin(phase + Math.PI) * 0.72
       : isWalking
       ? Math.sin(phase + Math.PI) * 0.4
@@ -1308,7 +1311,9 @@ function drawDetailedCharacter(
       : spec.pose === 'aiming'
       ? -1.25
       : 0.12;
-    const armB = isRunning
+    const armB = isKneeling
+      ? 0.28
+      : isRunning
       ? Math.sin(phase) * 0.72
       : isWalking
       ? Math.sin(phase) * 0.4
@@ -1316,12 +1321,16 @@ function drawDetailedCharacter(
       ? -0.9 + Math.cos(phase) * 0.12
       : -0.18;
 
-    const bounce = isRunning
+    const bounce = isKneeling
+      ? Math.sin(t * 1.8 + i) * charH * 0.006
+      : isRunning
       ? Math.abs(Math.sin(phase)) * -charH * 0.045
       : isWalking
       ? Math.abs(Math.sin(phase)) * -charH * 0.02
       : Math.sin(phase) * charH * 0.015;
-    const lean = isRunning
+    const lean = isKneeling
+      ? 0.08 * dir
+      : isRunning
       ? 0.2 * dir
       : isCreature
       ? 0.26 * dir
@@ -1329,10 +1338,10 @@ function drawDetailedCharacter(
       ? 0.07 * dir
       : 0;
 
-    // Proportions relative to charH (anchor: feet at ~cy + charH*0.05)
-    const hipY = -charH * 0.38;
-    const shoulderY = -charH * 0.72;
-    const headY = -charH * 0.86;
+    // Kneeling lowers the pelvis and shoulders while keeping the head readable.
+    const hipY = isKneeling ? -charH * 0.28 : -charH * 0.38;
+    const shoulderY = isKneeling ? -charH * 0.62 : -charH * 0.72;
+    const headY = isKneeling ? -charH * 0.77 : -charH * 0.86;
     const headR = charH * 0.115;
     const torsoW = charH * (spec.armorStyle === 'heavy-plate' ? 0.26 : 0.21);
     const thighLen = charH * 0.21;
@@ -1354,7 +1363,9 @@ function drawDetailedCharacter(
     ctx.rotate(lean * dir);
 
     const drawLeg = (angle: number, isBack: boolean) => {
-      const kneeBend = Math.max(0, -Math.cos(phase + (isBack ? Math.PI : 0)) * (isRunning ? 0.65 : 0.35));
+      const kneeBend = isKneeling
+        ? (isBack ? 1.35 : 1.1)
+        : Math.max(0, -Math.cos(phase + (isBack ? Math.PI : 0)) * (isRunning ? 0.65 : 0.35));
       const kx = Math.sin(angle) * thighLen;
       const ky = hipY + Math.cos(angle) * thighLen;
       const fx = kx + Math.sin(angle - kneeBend) * shinLen;
