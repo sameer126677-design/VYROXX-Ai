@@ -64,6 +64,7 @@ export const CharacterSpecSchema = z.object({
     'combat',
     'floating',
     'chasing',
+    'kneeling',
   ]),
   expression: z.enum(['determined', 'alert', 'calm', 'fierce', 'hollow']),
   armorStyle: z.enum([
