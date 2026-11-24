@@ -9,7 +9,18 @@ function material(color: string, roughness = 0.72): THREE.MeshStandardMaterial {
 function mesh(geometry: THREE.BufferGeometry, color: string): THREE.Mesh {
   return new THREE.Mesh(geometry, material(color));
 }
-function addPrimitive(group: THREE.Group, primitive: VisualBlueprint['primitive'], color: string, index: number): void {
+function seededRandom(seedText: string): () => number {
+  let seed = 2166136261;
+  for (let i = 0; i < seedText.length; i += 1) seed = Math.imul(seed ^ seedText.charCodeAt(i), 16777619);
+  return () => {
+    seed += 0x6D2B79F5;
+    let value = seed;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function addPrimitive(group: THREE.Group, primitive: VisualBlueprint['primitive'], color: string, index: number, seed: string): void {
   const offset = index * 0.08;
   let object: THREE.Object3D;
   switch (primitive) {
@@ -19,20 +30,19 @@ function addPrimitive(group: THREE.Group, primitive: VisualBlueprint['primitive'
     case 'cone': object = mesh(new THREE.ConeGeometry(0.65, 1.5, 16), color); break;
     case 'torus': object = mesh(new THREE.TorusGeometry(0.8, 0.12, 10, 32), color); break;
     case 'particles': {
+      const random = seededRandom(seed);
       const geometry = new THREE.BufferGeometry();
       const points = new Float32Array(90);
       for (let i = 0; i < points.length; i += 3) {
-        points[i] = (Math.random() - 0.5) * 2;
-        points[i + 1] = (Math.random() - 0.5) * 2;
-        points[i + 2] = (Math.random() - 0.5) * 2;
+        points[i] = (random() - 0.5) * 2;
+        points[i + 1] = (random() - 0.5) * 2;
+        points[i + 2] = (random() - 0.5) * 2;
       }
       geometry.setAttribute('position', new THREE.BufferAttribute(points, 3));
       object = new THREE.Points(geometry, new THREE.PointsMaterial({ color, size: 0.06 }));
       break;
     }
-    case 'text':
-      object = mesh(new THREE.BoxGeometry(1.6, 0.16, 0.08), color);
-      break;
+    case 'text': object = mesh(new THREE.BoxGeometry(1.6, 0.16, 0.08), color); break;
     case 'box':
     case 'composite':
     default: object = mesh(new THREE.BoxGeometry(1.2, 1.2, 0.7), color); break;
@@ -45,7 +55,7 @@ function addPrimitive(group: THREE.Group, primitive: VisualBlueprint['primitive'
 export function buildThreeObjectFromBlueprint(blueprint: VisualBlueprint): THREE.Group {
   const group = new THREE.Group();
   group.name = blueprint.label;
-  blueprint.layers.forEach((layer, index) => addPrimitive(group, layer.primitive, layer.color, index));
+  blueprint.layers.forEach((layer, index) => addPrimitive(group, layer.primitive, layer.color, index, `${blueprint.id}:${layer.id}`));
   group.position.set(blueprint.transform.position.x, blueprint.transform.position.y, blueprint.transform.position.z);
   group.rotation.set(
     THREE.MathUtils.degToRad(blueprint.transform.rotation.x),

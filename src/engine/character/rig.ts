@@ -19,6 +19,8 @@ export interface CharacterRig {
 export interface JointPose { jointId: string; rotation: Vec3; position?: Vec3; }
 export interface CharacterPose { rigId: string; frame: number; joints: JointPose[]; }
 export interface RigValidation { valid: boolean; errors: string[]; }
+export interface WorldJointTransform { jointId: string; position: Vec3; rotation: Vec3; }
+export interface IK2DResult { root: { x: number; y: number }; middle: { x: number; y: number }; end: { x: number; y: number }; reachable: boolean; }
 
 /** Validates hierarchy integrity before animation or export. */
 export function validateCharacterRig(rig: CharacterRig): RigValidation {
@@ -48,7 +50,7 @@ export function validateCharacterRig(rig: CharacterRig): RigValidation {
 }
 
 export function clampJointRotation(rotation: Vec3, limits?: RigJoint['limits']): Vec3 {
-  if (!limits) return rotation;
+  if (!limits) return { ...rotation };
   return {
     x: Math.max(limits.min.x, Math.min(limits.max.x, rotation.x)),
     y: Math.max(limits.min.y, Math.min(limits.max.y, rotation.y)),
@@ -66,6 +68,85 @@ export function applyCharacterPose(rig: CharacterRig, pose: CharacterPose): Map<
     const keyed = poseById.get(joint.id);
     return [joint.id, clampJointRotation(keyed?.rotation ?? joint.bindRotation, joint.limits)];
   }));
+}
+
+/**
+ * Evaluates the hierarchy in parent-first order. Rotations are Euler radians;
+ * positions are accumulated in the parent frame with Z rotation in the XY plane.
+ */
+export function evaluateRigWorldPose(rig: CharacterRig, pose: CharacterPose): Map<string, WorldJointTransform> {
+  const rotations = applyCharacterPose(rig, pose);
+  const byId = new Map(rig.joints.map((joint) => [joint.id, joint]));
+  const output = new Map<string, WorldJointTransform>();
+  const visiting = new Set<string>();
+  const evaluate = (joint: RigJoint): WorldJointTransform => {
+    const cached = output.get(joint.id);
+    if (cached) return cached;
+    if (visiting.has(joint.id)) throw new Error(`Rig hierarchy cycle at ${joint.id}`);
+    visiting.add(joint.id);
+    const localRotation = rotations.get(joint.id) ?? joint.bindRotation;
+    const localPosition = joint.bindPosition;
+    let result: WorldJointTransform;
+    if (!joint.parentId) {
+      result = { jointId: joint.id, position: { ...localPosition }, rotation: { ...localRotation } };
+    } else {
+      const parent = byId.get(joint.parentId);
+      if (!parent) throw new Error(`Missing parent ${joint.parentId}`);
+      const parentWorld = evaluate(parent);
+      const angle = parentWorld.rotation.z;
+      const c = Math.cos(angle), s = Math.sin(angle);
+      const rotated = {
+        x: localPosition.x * c - localPosition.y * s,
+        y: localPosition.x * s + localPosition.y * c,
+        z: localPosition.z,
+      };
+      result = {
+        jointId: joint.id,
+        position: {
+          x: parentWorld.position.x + rotated.x,
+          y: parentWorld.position.y + rotated.y,
+          z: parentWorld.position.z + rotated.z,
+        },
+        rotation: {
+          x: parentWorld.rotation.x + localRotation.x,
+          y: parentWorld.rotation.y + localRotation.y,
+          z: parentWorld.rotation.z + localRotation.z,
+        },
+      };
+    }
+    visiting.delete(joint.id);
+    output.set(joint.id, result);
+    return result;
+  };
+  rig.joints.forEach(evaluate);
+  return output;
+}
+
+/** Analytic two-bone IK solver for 2D limbs; clamps unreachable targets to the limb's reach. */
+export function solveTwoBoneIK2D(
+  root: { x: number; y: number },
+  target: { x: number; y: number },
+  upperLength: number,
+  lowerLength: number,
+  bendDirection: 1 | -1 = 1
+): IK2DResult {
+  const a = Math.max(0.0001, upperLength);
+  const b = Math.max(0.0001, lowerLength);
+  const dx = target.x - root.x, dy = target.y - root.y;
+  const rawDistance = Math.hypot(dx, dy);
+  const minReach = Math.abs(a - b) + 0.0001;
+  const maxReach = a + b - 0.0001;
+  const distance = Math.max(minReach, Math.min(maxReach, rawDistance));
+  const angleToTarget = Math.atan2(dy, dx);
+  const rootOffset = Math.acos(Math.max(-1, Math.min(1, (a * a + distance * distance - b * b) / (2 * a * distance))));
+  const rootAngle = angleToTarget + bendDirection * rootOffset;
+  const middle = { x: root.x + Math.cos(rootAngle) * a, y: root.y + Math.sin(rootAngle) * a };
+  const endAngle = Math.atan2(target.y - middle.y, target.x - middle.x);
+  return {
+    root: { ...root }, middle,
+    end: { x: middle.x + Math.cos(endAngle) * b, y: middle.y + Math.sin(endAngle) * b },
+    reachable: rawDistance >= minReach && rawDistance <= maxReach,
+  };
 }
 
 /** Builds a minimal humanoid hierarchy as a starting point for rig authoring. */
