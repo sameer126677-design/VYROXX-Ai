@@ -21,6 +21,7 @@ import { transitionCharacterObjectHandover, type CharacterObjectHandoverState, t
 import { applyEnvironmentInteractionTransform, transitionEnvironmentInteraction, type EnvironmentInteractionState, type EnvironmentInteractionEvent } from './environmentInteraction';
 import { applySharedPayloadTransform, evaluatePhysicalCoordination, type PhysicalCoordinationRequest, type PhysicalCoordinationState, type PhysicalCoordinationResult } from './physicalCoordination';
 import { applyCharacterPhysicsTransform, stepCharacterPhysics, type CharacterPhysicsState, type CharacterCapsule, type EnvironmentCollider, type CharacterPhysicsOptions, type CharacterPhysicsStep } from './collisionPhysics';
+import { applyDynamicBodyTransform, stepDynamicPhysics, type DynamicBodyDefinition, type DynamicBodyState, type DynamicPhysicsOptions, type DynamicPhysicsStep } from './dynamicObjectPhysics';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
 export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; dynamicBalance?: DynamicBalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions }; }
@@ -348,5 +349,24 @@ export function updateCharacterCollisionPhysics(
   }
   const result = stepCharacterPhysics(previous,capsule,colliders,frame,fps,options);
   applyCharacterPhysicsTransform(model.root,result.state);
+  return result;
+}
+
+
+/** Advances a group of dynamic scene objects and applies their Three.js transforms. */
+export function updateDynamicSceneObjects(
+  objects: Map<string,Object3D>,
+  definitions: DynamicBodyDefinition[],
+  previousStates: DynamicBodyState[],
+  frame: number,
+  fps: number,
+  options: DynamicPhysicsOptions = {}
+): DynamicPhysicsStep {
+  const result=stepDynamicPhysics(definitions,previousStates,frame,fps,options);
+  for(const state of result.states){
+    const object=objects.get(state.id);
+    if(!object)throw new Error(`Missing Three.js object for dynamic body "${state.id}".`);
+    applyDynamicBodyTransform(object,state);
+  }
   return result;
 }
