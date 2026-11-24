@@ -25,6 +25,7 @@ import { applyDynamicBodyTransform, stepDynamicPhysics, type DynamicBodyDefiniti
 import { applyCharacterObjectForce, type CharacterObjectForceState, type CharacterObjectForceRequest, type CharacterObjectForceResult } from './characterObjectForce';
 import { applyCharacterPairForce, type CharacterPairForceState, type CharacterPairForceRequest, type CharacterPairForceResult } from './characterPairForce';
 import { recoverCharacterBalance, type CharacterBalanceRecoveryState, type CharacterBalanceRecoveryOptions, type CharacterBalanceRecoveryResult } from './characterBalanceRecovery';
+import { applyCharacterRagdollImpulse, stepCharacterRagdoll, recoverCharacterFromRagdoll, type CharacterRagdollState, type CharacterRagdollOptions, type CharacterRagdollStep } from './characterRagdoll';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
 export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; dynamicBalance?: DynamicBalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions }; }
@@ -414,6 +415,52 @@ export function updateCharacterBalanceRecovery(
     throw new Error('Procedural character does not match the balance recovery state.');
   }
   const result = recoverCharacterBalance(rig, pose, physics, previous, frame, fps, options);
+  updateThreeRigFromPose(model.rig, rig, result.pose);
+  return result;
+}
+
+
+/** Applies an authored angular impulse and returns the updated procedural ragdoll state. */
+export function triggerCharacterRagdoll(
+  rig: CharacterRig,
+  previous: CharacterRagdollState,
+  jointId: string,
+  impulse: { x: number; y: number; z: number },
+  frame: number
+): CharacterRagdollState {
+  return applyCharacterRagdollImpulse(rig, previous, jointId, impulse, frame);
+}
+
+/** Advances ragdoll joint motion and applies the resulting pose to the procedural model. */
+export function updateCharacterRagdoll(
+  model: ProceduralCharacterModel,
+  rig: CharacterRig,
+  previous: CharacterRagdollState,
+  frame: number,
+  fps: number,
+  options: CharacterRagdollOptions = {}
+): CharacterRagdollStep {
+  if (model.appearance.id !== previous.characterId) {
+    throw new Error('Procedural character does not match the ragdoll state.');
+  }
+  const result = stepCharacterRagdoll(rig, previous, frame, fps, options);
+  updateThreeRigFromPose(model.rig, rig, result.pose);
+  return result;
+}
+
+/** Blends the ragdoll pose into an authored get-up pose and applies it to the model. */
+export function updateCharacterRagdollRecovery(
+  model: ProceduralCharacterModel,
+  rig: CharacterRig,
+  previous: CharacterRagdollState,
+  getUpPose: CharacterPose,
+  frame: number,
+  durationFrames?: number
+): CharacterRagdollStep {
+  if (model.appearance.id !== previous.characterId) {
+    throw new Error('Procedural character does not match the ragdoll recovery state.');
+  }
+  const result = recoverCharacterFromRagdoll(rig, previous, getUpPose, frame, durationFrames);
   updateThreeRigFromPose(model.rig, rig, result.pose);
   return result;
 }
