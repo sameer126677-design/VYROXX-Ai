@@ -1,7 +1,7 @@
 import type { CharacterRig, CharacterPose } from './rig';
 import type { CharacterExpression, ProceduralCharacterModel } from './proceduralCharacter';
 import { updateCharacterExpression, setCharacterBlink, setCharacterGaze, setCharacterViseme } from './proceduralCharacter';
-import { createMotionClip, sampleMotionClip, type MotionPreset, type MotionClip } from './animation';
+import { createMotionClip, sampleMotionClip, blendCharacterPoses, type MotionPreset, type MotionClip } from './animation';
 import { createThreeRigRuntime, updateThreeRigFromPose, type ThreeRigOptions, type ThreeRigRuntime } from './threeRig';
 import { sampleLipSync, type LipSyncTrack } from './lipSync';
 import { evaluateCharacterActionSequence, type CharacterActionSequence, type CharacterActionFrame } from './actionSequence';
@@ -84,6 +84,13 @@ export function updateThreeCharacterFrameWithContactState(
   const activePreset = locomotion?.preset ?? preset;
   const clip = options.clip ?? createMotionClip(rig, activePreset, fps, options.durationSec ?? 2);
   let pose = sampleMotionClip(rig, clip, frame, fps, locomotion?.phase);
+  if (locomotion && locomotion.previousPreset !== locomotion.preset && locomotion.transitionProgress < 1) {
+    const fromClip = createMotionClip(rig, locomotion.previousPreset, fps, options.durationSec ?? 2);
+    const fromPose = sampleMotionClip(rig, fromClip, frame, fps, locomotion.phase);
+    const t = locomotion.transitionProgress;
+    const eased = t * t * (3 - 2 * t);
+    pose = blendCharacterPoses(fromPose, pose, eased);
+  }
   if (locomotion) pose = applyLocomotionPose(rig, pose, locomotion);
   const contactOptions: GroundContactOptions = {
     ...options.groundContact,
