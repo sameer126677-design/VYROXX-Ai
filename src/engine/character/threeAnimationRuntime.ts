@@ -28,6 +28,10 @@ import { recoverCharacterBalance, type CharacterBalanceRecoveryState, type Chara
 import { applyCharacterRagdollImpulse, stepCharacterRagdoll, recoverCharacterFromRagdoll, type CharacterRagdollState, type CharacterRagdollOptions, type CharacterRagdollStep } from './characterRagdoll';
 import { createCharacterImpactState, sampleCharacterImpactReaction, type CharacterImpactRequest, type CharacterImpactState, type CharacterImpactSample } from './characterImpactReaction';
 import { createCharacterCombatState, startCharacterCombatMove, stepCharacterCombat, applyCharacterCombatDamage, recoverCharacterCombatStamina, type CharacterCombatState, type CombatCommand, type CombatMoveDefinition, type CombatTransition } from './characterCombat';
+import { detectCombatHits, type CombatHitContact } from './combatHitDetection';
+import { resolveCombatHit, type CombatResolutionResult } from './combatResolution';
+import type { CombatHitbox, CombatHurtbox } from './combatHitboxes';
+import { advanceCombatCombo, createCombatComboState, type CombatComboDefinition, type CombatComboState, type CombatComboResult } from './combatCombo';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
 export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; dynamicBalance?: DynamicBalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions }; }
@@ -536,4 +540,37 @@ export function recoverThreeCharacterCombatStamina(
   frame: number
 ): CharacterCombatState {
   return recoverCharacterCombatStamina(previous, amount, frame);
+}
+
+
+/** Detects active attack volumes overlapping another character's hurt volumes. */
+export function detectThreeCharacterCombatHits(
+  hitboxes: CombatHitbox[],
+  hurtboxes: CombatHurtbox[],
+  frame: number
+): CombatHitContact[] {
+  return detectCombatHits(hitboxes,hurtboxes,frame);
+}
+
+/** Resolves one confirmed contact against the matching target combat state. */
+export function resolveThreeCharacterCombatHit(
+  targetState: CharacterCombatState,
+  contact: CombatHitContact
+): CombatResolutionResult {
+  return resolveCombatHit(targetState,contact);
+}
+
+/** Creates an empty combo input state. */
+export function createThreeCharacterComboState(): CombatComboState {
+  return createCombatComboState();
+}
+
+/** Advances an authored combo from a timestamped player or AI input. */
+export function updateThreeCharacterCombo(
+  definition: CombatComboDefinition,
+  previous: CombatComboState,
+  input: string,
+  frame: number
+): CombatComboResult {
+  return advanceCombatCombo(definition,previous,input,frame);
 }
