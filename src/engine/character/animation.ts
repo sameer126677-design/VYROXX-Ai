@@ -62,6 +62,26 @@ export function sampleMotionClip(rig: CharacterRig, clip: MotionClip, frame: num
   return { rigId: rig.id, frame, joints };
 }
 
+
+/** Smoothly blends two poses from the same rig; missing joints retain the available side. */
+export function blendCharacterPoses(from: CharacterPose, to: CharacterPose, amount: number): CharacterPose {
+  if (from.rigId !== to.rigId) throw new Error('Cannot blend poses from different rigs.');
+  const t = Math.max(0, Math.min(1, amount));
+  const fromJoints = new Map(from.joints.map((joint) => [joint.jointId, joint]));
+  const toJoints = new Map(to.joints.map((joint) => [joint.jointId, joint]));
+  const ids = new Set([...fromJoints.keys(), ...toJoints.keys()]);
+  const joints: JointPose[] = [...ids].map((jointId) => {
+    const a = fromJoints.get(jointId), b = toJoints.get(jointId);
+    if (!a) return { ...b!, rotation: { ...b!.rotation }, position: b!.position ? { ...b!.position } : undefined };
+    if (!b) return { ...a, rotation: { ...a.rotation }, position: a.position ? { ...a.position } : undefined };
+    const lerp = (x: number, y: number) => x + (y - x) * t;
+    const rotation = { x: lerp(a.rotation.x, b.rotation.x), y: lerp(a.rotation.y, b.rotation.y), z: lerp(a.rotation.z, b.rotation.z) };
+    const position = a.position && b.position ? { x: lerp(a.position.x,b.position.x), y: lerp(a.position.y,b.position.y), z: lerp(a.position.z,b.position.z) } : (t < 0.5 ? a.position : b.position);
+    return { jointId, rotation, position: position ? { ...position } : undefined };
+  });
+  return { rigId: from.rigId, frame: Math.round(from.frame + (to.frame - from.frame) * t), joints };
+}
+
 export function createMotionClip(rig: CharacterRig, preset: MotionPreset, fps: number, durationSec: number, options: Partial<Pick<MotionClip, 'amplitude' | 'speed' | 'loop'>> = {}): MotionClip {
   return {
     id: `motion-${rig.characterId}-${preset}`,
