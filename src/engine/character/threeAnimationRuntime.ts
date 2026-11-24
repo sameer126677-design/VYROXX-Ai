@@ -16,6 +16,7 @@ import { createFootstepEventState, detectFootstepEvents, type FootstepEvent, typ
 import { evaluateCharacterInteraction, type CharacterInteractionRequest, type CharacterInteractionResult } from './interaction';
 import { transitionInteractionObject, type InteractionObjectState, type InteractionHand } from './objectInteraction';
 import type { Object3D } from 'three';
+import { evaluateCharacterPairInteraction, type CharacterPairInteractionRequest, type CharacterPairInteractionResult } from './pairInteraction';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
 export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; dynamicBalance?: DynamicBalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions }; }
@@ -217,4 +218,16 @@ export function updateInteractionObjectState(
   if (command.type === 'grab') attachInteractionObject(model, object, command.hand);
   else if (previous.status === 'held') detachInteractionObject(model, object);
   return next;
+}
+
+
+/** Evaluates and applies a coordinated two-character interaction to separate procedural models. */
+export function updateCharacterPairInteraction(firstModel: ProceduralCharacterModel, secondModel: ProceduralCharacterModel, request: CharacterPairInteractionRequest): CharacterPairInteractionResult {
+  if (firstModel === secondModel || firstModel.root === secondModel.root) throw new Error('Pair interaction requires two separate character models.');
+  const result = evaluateCharacterPairInteraction(request);
+  updateThreeRigFromPose(firstModel.rig, request.firstRig, result.firstPose);
+  updateThreeRigFromPose(secondModel.rig, request.secondRig, result.secondPose);
+  setCharacterHandGesture(firstModel, request.firstHand, result.first.gesture);
+  setCharacterHandGesture(secondModel, request.secondHand, result.second.gesture);
+  return result;
 }
