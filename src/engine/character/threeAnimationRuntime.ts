@@ -642,3 +642,32 @@ export function recordThreeCharacterCombatEvent(previous:CombatEventLedger,event
 export function readThreeCharacterCombatEvents(ledger:CombatEventLedger,fromFrame=0,toFrame=Infinity):CombatEventRecord[] {
   return readCombatEvents(ledger,fromFrame,toFrame);
 }
+
+import { createCombatMovementState, sampleCombatMovement, type CombatMovementRequest, type CombatMovementState, type CombatMovementSample } from './combatMovement';
+import { evaluateCombatSpacing, type CombatSpacingOptions, type CombatSpacingResult } from './combatSpacing';
+import { sampleCombatAnimation, type CombatAnimationRequest } from './combatAnimation';
+import { sampleCombatMoveTimeline, type CombatMoveTimelineSample } from './combatMoveTimeline';
+
+/** Starts a caller-owned tactical movement command such as dodge, strafe or retreat. */
+export function createThreeCharacterCombatMovement(request:CombatMovementRequest):CombatMovementState {
+  return createCombatMovementState(request);
+}
+/** Samples tactical movement velocity/displacement; caller applies it to character physics/root. */
+export function updateThreeCharacterCombatMovement(state:CombatMovementState,frame:number):CombatMovementSample {
+  return sampleCombatMovement(state,frame);
+}
+/** Classifies target spacing and reports preferred-distance correction and attack reach. */
+export function evaluateThreeCharacterCombatSpacing(distance:number,options?:CombatSpacingOptions):CombatSpacingResult {
+  return evaluateCombatSpacing(distance,options);
+}
+/** Blends a stylized combat action overlay onto the supplied base animation pose. */
+export function updateThreeCharacterCombatAnimation(model:ProceduralCharacterModel,rig:CharacterRig,basePose:CharacterPose,request:CombatAnimationRequest,frame:number):CharacterPose {
+  if(model.appearance.id!==rig.characterId)throw new Error('Combat animation model and rig do not match.');
+  const pose=sampleCombatAnimation(rig,basePose,request,frame);
+  updateThreeRigFromPose(model.rig,rig,pose);
+  return pose;
+}
+/** Samples startup, active and recovery phases for an authored combat move. */
+export function sampleThreeCharacterCombatMoveTimeline(move:CombatMoveDefinition,startedAtFrame:number,frame:number):CombatMoveTimelineSample {
+  return sampleCombatMoveTimeline(move,startedAtFrame,frame);
+}
