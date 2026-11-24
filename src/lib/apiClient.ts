@@ -255,3 +255,55 @@ export async function deleteAccountServerStorage(): Promise<void> {
     },
   });
 }
+
+export type CloudflareFluxImageModel =
+  | '@cf/black-forest-labs/flux-2-klein-4b'
+  | '@cf/black-forest-labs/flux-2-klein-9b'
+  | '@cf/black-forest-labs/flux-2-dev';
+
+export interface GenerateCloudflareImageRequest {
+  prompt: string;
+  projectId: string;
+  model?: CloudflareFluxImageModel;
+  width?: number;
+  height?: number;
+  guidance?: number;
+  seed?: number;
+  referenceImagePaths?: string[];
+}
+
+export interface GenerateCloudflareImageResponse {
+  storagePath: string;
+  mimeType: 'image/png' | 'image/jpeg' | 'image/webp';
+  fileSizeBytes: number;
+  model: CloudflareFluxImageModel;
+  width: number;
+  height: number;
+}
+
+export async function generateCloudflareImage(
+  payload: GenerateCloudflareImageRequest
+): Promise<GenerateCloudflareImageResponse> {
+  const token = await getVerifiedIdToken();
+  const response = await fetch('/api/ai/generate-image', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      model: '@cf/black-forest-labs/flux-2-klein-4b',
+      width: 1024,
+      height: 768,
+      ...payload,
+    }),
+  });
+  const body = await response.json().catch(() => ({})) as Partial<GenerateCloudflareImageResponse> & { error?: string };
+  if (!response.ok) {
+    throw new Error(body.error || `Image generation failed (${response.status}).`);
+  }
+  if (!body.storagePath || !body.mimeType || !body.model) {
+    throw new Error('Image service returned an incomplete result.');
+  }
+  return body as GenerateCloudflareImageResponse;
+}
