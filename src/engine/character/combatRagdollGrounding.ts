@@ -45,6 +45,10 @@ export function updateCombatRagdollGrounding(
       frame < previous.changedAtFrame || frame < physics.changedAtFrame || frame < ragdoll.changedAtFrame) {
     throw new Error('Ragdoll grounding inputs must belong to the same character and advance monotonically.');
   }
+  if (![physics.position.x, physics.position.y, physics.position.z, physics.velocity.x, physics.velocity.y, physics.velocity.z,
+    ...ragdoll.joints.flatMap(joint => [joint.angularVelocity.x, joint.angularVelocity.y, joint.angularVelocity.z])].every(Number.isFinite)) {
+    throw new Error('Ragdoll grounding received non-finite physics or angular state.');
+  }
   const horizontalLimit = options.horizontalSpeedThreshold ?? 0.12;
   const verticalLimit = options.verticalSpeedThreshold ?? 0.12;
   const angularLimit = options.angularSpeedThreshold ?? 0.12;
