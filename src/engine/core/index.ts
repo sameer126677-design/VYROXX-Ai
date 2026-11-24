@@ -9,3 +9,4 @@ export * from './imageProviderPolicy';
 export * from '../character/rig';
 export * from '../cinematic/cameraDirector';
 export * from '../visuals/proceduralBuilder';
+export * from './rendererBridge';
