@@ -11,9 +11,10 @@ import { solveLimbIK3D, type LimbIK3DRequest } from './ik3d';
 import { solveFullBodyIK3D, type FullBodyIKOptions } from './fullBodyIK';
 import { solveCharacterBalance3D, type BalanceOptions } from './balance';
 import { evaluateGroundContactPlan, applyGroundContactPlan, type GroundContactOptions } from './groundContact';
+import { evaluateLocomotionState, applyLocomotionPose, type LocomotionInput, type LocomotionOptions } from './locomotion';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
-export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; groundContact?: GroundContactOptions; }
+export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions }; }
 
 function applyRequestedIK(rig: CharacterRig, pose: CharacterPose, requests?: LimbIK3DRequest[], fullBodyIK?: FullBodyIKOptions, balance?: BalanceOptions, groundContact?: GroundContactOptions, frame = 0, fps = 30): CharacterPose {
   const grounded = groundContact ? applyGroundContactPlan(rig, pose, evaluateGroundContactPlan(rig, frame, fps, groundContact)) : pose;
@@ -25,13 +26,17 @@ function applyRequestedIK(rig: CharacterRig, pose: CharacterPose, requests?: Lim
 /** Builds a rig runtime and evaluates one deterministic animation frame. */
 export function evaluateThreeCharacterFrame(
   rig: CharacterRig, preset: MotionPreset, frame: number, fps: number,
-  options: ThreeRigOptions & { durationSec?: number; clip?: MotionClip; footIK?: FootIKOptions; ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; groundContact?: GroundContactOptions } = {}
+  options: ThreeRigOptions & { durationSec?: number; clip?: MotionClip; footIK?: FootIKOptions; ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions } } = {}
 ): ThreeCharacterFrame {
   const runtime = createThreeRigRuntime(rig, options);
-  const clip = options.clip ?? createMotionClip(rig, preset, fps, options.durationSec ?? 2);
+  const locomotion = options.locomotion ? evaluateLocomotionState({ ...options.locomotion, frame, fps }, options.locomotion.options) : undefined;
+  const activePreset = locomotion?.preset ?? preset;
+  const clip = options.clip ?? createMotionClip(rig, activePreset, fps, options.durationSec ?? 2);
   let pose = sampleMotionClip(rig, clip, frame, fps);
+  if (locomotion) pose = applyLocomotionPose(rig, pose, locomotion);
   if (options.footIK && ['walk', 'run', 'sprint'].includes(preset)) pose = applyFootIKToPose(rig, pose, evaluateFootContactPlan(rig, frame, fps, options.footIK), options.footIK);
-  pose = applyRequestedIK(rig, pose, options.ik3D, options.fullBodyIK, options.balance, options.groundContact, frame, fps);
+  const contactOptions = locomotion ? { ...options.groundContact, rootVelocity: options.locomotion!.velocity, strideLength: locomotion.strideLength, stepHeight: locomotion.stepHeight, cycleRate: locomotion.cycleRate } : options.groundContact;
+  pose = applyRequestedIK(rig, pose, options.ik3D, options.fullBodyIK, options.balance, contactOptions, frame, fps);
   updateThreeRigFromPose(runtime, rig, pose, options.unitScale ?? 1);
   return { runtime, pose, frame };
 }
@@ -39,18 +44,22 @@ export function evaluateThreeCharacterFrame(
 /** Updates an existing runtime without rebuilding its Three.js hierarchy. */
 export function updateThreeCharacterFrame(
   runtime: ThreeRigRuntime, rig: CharacterRig, preset: MotionPreset, frame: number, fps: number,
-  options: { durationSec?: number; clip?: MotionClip; unitScale?: number; footIK?: FootIKOptions; ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; groundContact?: GroundContactOptions } = {}
+  options: { durationSec?: number; clip?: MotionClip; unitScale?: number; footIK?: FootIKOptions; ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions } } = {}
 ): CharacterPose {
-  const clip = options.clip ?? createMotionClip(rig, preset, fps, options.durationSec ?? 2);
+  const locomotion = options.locomotion ? evaluateLocomotionState({ ...options.locomotion, frame, fps }, options.locomotion.options) : undefined;
+  const activePreset = locomotion?.preset ?? preset;
+  const clip = options.clip ?? createMotionClip(rig, activePreset, fps, options.durationSec ?? 2);
   let pose = sampleMotionClip(rig, clip, frame, fps);
-  if (options.footIK && ['walk', 'run', 'sprint'].includes(preset)) pose = applyFootIKToPose(rig, pose, evaluateFootContactPlan(rig, frame, fps, options.footIK), options.footIK);
-  pose = applyRequestedIK(rig, pose, options.ik3D, options.fullBodyIK, options.balance, options.groundContact, frame, fps);
+  if (locomotion) pose = applyLocomotionPose(rig, pose, locomotion);
+  if (options.footIK && ['walk', 'run', 'sprint'].includes(activePreset)) pose = applyFootIKToPose(rig, pose, evaluateFootContactPlan(rig, frame, fps, options.footIK), options.footIK);
+  const contactOptions = locomotion ? { ...options.groundContact, rootVelocity: options.locomotion?.velocity ?? { x: 0, z: 0 }, strideLength: locomotion.strideLength, stepHeight: locomotion.stepHeight, cycleRate: locomotion.cycleRate } : options.groundContact;
+  pose = applyRequestedIK(rig, pose, options.ik3D, options.fullBodyIK, options.balance, contactOptions, frame, fps);
   updateThreeRigFromPose(runtime, rig, pose, options.unitScale ?? 1);
   return pose;
 }
 
 export interface CharacterPerformance { motion: MotionPreset; expression?: CharacterExpression; expressionAtFrame?: number; }
-export function updateCharacterPerformance(model: ProceduralCharacterModel, rig: CharacterRig, performance: CharacterPerformance, frame: number, fps: number, options: { durationSec?: number; clip?: MotionClip; unitScale?: number; footIK?: FootIKOptions; ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; groundContact?: GroundContactOptions } = {}): CharacterPose {
+export function updateCharacterPerformance(model: ProceduralCharacterModel, rig: CharacterRig, performance: CharacterPerformance, frame: number, fps: number, options: { durationSec?: number; clip?: MotionClip; unitScale?: number; footIK?: FootIKOptions; ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions } } = {}): CharacterPose {
   const pose = updateThreeCharacterFrame(model.rig, rig, performance.motion, frame, fps, options);
   if (performance.expression && frame >= (performance.expressionAtFrame ?? 0) && model.appearance.expression !== performance.expression) updateCharacterExpression(model, performance.expression);
   return pose;

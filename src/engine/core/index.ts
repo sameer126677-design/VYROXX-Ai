@@ -37,3 +37,5 @@ export * from '../character/ik3d';
 export * from '../character/balance';
 
 export * from '../character/groundContact';
+
+export * from '../character/locomotion';
