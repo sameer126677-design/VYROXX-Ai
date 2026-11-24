@@ -31,3 +31,5 @@ export * from '../character/lipSync';
 export * from '../character/actionSequence';
 
 export * from '../character/footIK';
+
+export * from '../character/ik3d';
