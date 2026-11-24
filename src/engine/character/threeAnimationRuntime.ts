@@ -671,3 +671,33 @@ export function updateThreeCharacterCombatAnimation(model:ProceduralCharacterMod
 export function sampleThreeCharacterCombatMoveTimeline(move:CombatMoveDefinition,startedAtFrame:number,frame:number):CombatMoveTimelineSample {
   return sampleCombatMoveTimeline(move,startedAtFrame,frame);
 }
+
+import { createCombatEvadeState, sampleCombatEvade, type CombatEvadeState } from './combatEvade';
+import { applyCombatKnockback, type CombatKnockbackOptions, type CombatKnockbackResult } from './combatKnockback';
+import { applyCombatContactReaction, type CombatImpactBridgeResult } from './combatImpactBridge';
+import { createCombatEncounterState, updateCombatEncounter, type CombatEncounterState } from './combatEncounter';
+
+/** Creates a timed dodge/evasion window with optional authored invulnerability frames. */
+export function createThreeCharacterCombatEvade(characterId:string,frame:number,durationFrames:number,direction:{x:number;y:number;z:number},invulnerabilityStart=0,invulnerabilityDuration=0):CombatEvadeState {
+  return createCombatEvadeState(characterId,frame,durationFrames,direction,invulnerabilityStart,invulnerabilityDuration);
+}
+/** Samples active dodge and invulnerability windows at a timeline frame. */
+export function updateThreeCharacterCombatEvade(previous:CombatEvadeState,frame:number):ReturnType<typeof sampleCombatEvade> {
+  return sampleCombatEvade(previous,frame);
+}
+/** Applies a confirmed combat contact as an impulse to character physics velocity. */
+export function applyThreeCharacterCombatKnockback(previous:CharacterPhysicsState,contact:CombatHitContact,options?:CombatKnockbackOptions):CombatKnockbackResult {
+  return applyCombatKnockback(previous,contact,options);
+}
+/** Converts a detected combat contact into a procedural impact pose over the supplied base pose. */
+export function updateThreeCharacterCombatImpact(rig:CharacterRig,basePose:CharacterPose,contact:CombatHitContact,kind:'punch'|'kick'|'collision'|'fall'='punch',intensity=1):CombatImpactBridgeResult {
+  return applyCombatContactReaction(rig,basePose,contact,kind,intensity);
+}
+/** Combines combat, guard and status state into one caller-owned encounter snapshot. */
+export function createThreeCharacterCombatEncounter(combat:CharacterCombatState,guard:CombatGuardState,statuses:CombatStatusState):CombatEncounterState {
+  return createCombatEncounterState(combat,guard,statuses);
+}
+/** Advances the combined encounter snapshot without taking ownership of its component states. */
+export function updateThreeCharacterCombatEncounter(previous:CombatEncounterState,combat:CharacterCombatState,guard:CombatGuardState,statuses:CombatStatusState,frame:number):CombatEncounterState {
+  return updateCombatEncounter(previous,combat,guard,statuses,frame);
+}
