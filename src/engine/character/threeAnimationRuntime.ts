@@ -949,3 +949,30 @@ export function createThreeCharacterCombatImpactFromContacts(characterId:string,
 export function evaluateThreeCharacterCombatPhysicalAnimation(rig:CharacterRig,basePose:CharacterPose,physics:CharacterPhysicsState,contacts:CharacterPhysicsStep['contacts'],frame:number,impact?:CharacterImpactRequest|null,options?:CombatPhysicsPoseOptions):CombatPhysicalAnimationResult {
   return evaluateCombatPhysicalAnimation(rig,basePose,physics,contacts,frame,impact,options);
 }
+
+
+import { applyCombatRagdollImpulseFromContacts, type CombatRagdollImpulseOptions, type CombatRagdollImpulseResult } from './combatRagdollImpulseBridge';
+import { createCombatRagdollGroundingState, updateCombatRagdollGrounding, type CombatRagdollGroundingState, type CombatRagdollGroundingOptions, type CombatRagdollGroundingSample } from './combatRagdollGrounding';
+import { canStartCombatRagdollRecovery, type CombatRagdollRecoveryGateOptions, type CombatRagdollRecoveryGateResult } from './combatRagdollRecoveryGate';
+import { stepCombatRagdollPipeline, type CombatRagdollPipelineOptions, type CombatRagdollPipelineResult } from './combatRagdollPipeline';
+
+/** Converts the strongest physics contact into angular ragdoll impulses on selected rig joints. */
+export function applyThreeCharacterCombatRagdollImpact(rig:CharacterRig,previous:CharacterRagdollState,contacts:CharacterPhysicsStep['contacts'],frame:number,options?:CombatRagdollImpulseOptions):CombatRagdollImpulseResult {
+  return applyCombatRagdollImpulseFromContacts(rig,previous,contacts,frame,options);
+}
+/** Creates caller-owned grounded/settled tracking state for ragdoll recovery. */
+export function createThreeCharacterCombatRagdollGroundingState(characterId:string,rigId:string,frame=0):CombatRagdollGroundingState {
+  return createCombatRagdollGroundingState(characterId,rigId,frame);
+}
+/** Tracks grounded time and residual linear/angular movement before recovery. */
+export function updateThreeCharacterCombatRagdollGrounding(previous:CombatRagdollGroundingState,physics:CharacterPhysicsState,ragdoll:CharacterRagdollState,frame:number,options?:CombatRagdollGroundingOptions):CombatRagdollGroundingSample {
+  return updateCombatRagdollGrounding(previous,physics,ragdoll,frame,options);
+}
+/** Checks whether a fallen character has settled enough to begin its get-up animation. */
+export function canStartThreeCharacterCombatRagdollRecovery(ragdoll:CharacterRagdollState,physics:CharacterPhysicsState,grounding:CombatRagdollGroundingState,options?:CombatRagdollRecoveryGateOptions):CombatRagdollRecoveryGateResult {
+  return canStartCombatRagdollRecovery(ragdoll,physics,grounding,options);
+}
+/** Steps character collision and angular ragdoll together, with optional grounded automatic recovery. */
+export function stepThreeCharacterCombatRagdollPipeline(rig:CharacterRig,physics:CharacterPhysicsState,ragdoll:CharacterRagdollState,grounding:CombatRagdollGroundingState,capsule:CharacterCapsule,colliders:EnvironmentCollider[],basePose:CharacterPose,frame:number,fps:number,getUpPose?:CharacterPose,options?:CombatRagdollPipelineOptions):CombatRagdollPipelineResult {
+  return stepCombatRagdollPipeline(rig,physics,ragdoll,grounding,capsule,colliders,basePose,frame,fps,getUpPose,options);
+}
