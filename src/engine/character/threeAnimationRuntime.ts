@@ -18,6 +18,7 @@ import { transitionInteractionObject, type InteractionObjectState, type Interact
 import type { Object3D } from 'three';
 import { evaluateCharacterPairInteraction, type CharacterPairInteractionRequest, type CharacterPairInteractionResult } from './pairInteraction';
 import { transitionCharacterObjectHandover, type CharacterObjectHandoverState, type CharacterObjectHandoverEvent } from './objectHandover';
+import { applyEnvironmentInteractionTransform, transitionEnvironmentInteraction, type EnvironmentInteractionState, type EnvironmentInteractionEvent } from './environmentInteraction';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
 export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; dynamicBalance?: DynamicBalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions }; }
@@ -275,4 +276,35 @@ export function updateCharacterObjectHandover(
     hand: previous.receiverHand, frame: event.frame
   });
   return { interaction, state: { ...state, objectState } };
+}
+
+
+/** Directs a character's selected hand toward an environment prop interaction point. */
+export function updateCharacterEnvironmentInteraction(
+  model: ProceduralCharacterModel,
+  rig: CharacterRig,
+  pose: CharacterPose,
+  request: CharacterInteractionRequest
+): CharacterInteractionResult {
+  return updateCharacterInteraction(model, rig, pose, request);
+}
+
+/** Advances a caller-owned prop timeline state and applies its deterministic Three.js local transform. */
+export function updateEnvironmentObjectInteraction(
+  object: Object3D,
+  previous: EnvironmentInteractionState,
+  event: EnvironmentInteractionEvent
+): EnvironmentInteractionState {
+  const state = transitionEnvironmentInteraction(previous, event);
+  applyEnvironmentInteractionTransform(object, state, event.frame);
+  return state;
+}
+
+/** Re-samples an environment prop at an arbitrary timeline frame, including backward timeline seeking. */
+export function sampleEnvironmentObjectInteraction(
+  object: Object3D,
+  state: EnvironmentInteractionState,
+  frame: number
+): void {
+  applyEnvironmentInteractionTransform(object, state, frame);
 }
