@@ -42,7 +42,7 @@ export function updateThreeCharacterFrame(
   const clip = options.clip ?? createMotionClip(rig, preset, fps, options.durationSec ?? 2);
   let pose = sampleMotionClip(rig, clip, frame, fps);
   if (options.footIK && ['walk', 'run', 'sprint'].includes(preset)) pose = applyFootIKToPose(rig, pose, evaluateFootContactPlan(rig, frame, fps, options.footIK), options.footIK);
-  pose = applyRequestedIK(rig, pose, options.ik3D, options.fullBodyIK);
+  pose = applyRequestedIK(rig, pose, options.ik3D, options.fullBodyIK, options.balance);
   updateThreeRigFromPose(runtime, rig, pose, options.unitScale ?? 1);
   return pose;
 }
