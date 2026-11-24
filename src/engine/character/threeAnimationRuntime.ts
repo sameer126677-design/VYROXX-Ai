@@ -976,3 +976,26 @@ export function canStartThreeCharacterCombatRagdollRecovery(ragdoll:CharacterRag
 export function stepThreeCharacterCombatRagdollPipeline(rig:CharacterRig,physics:CharacterPhysicsState,ragdoll:CharacterRagdollState,grounding:CombatRagdollGroundingState,capsule:CharacterCapsule,colliders:EnvironmentCollider[],basePose:CharacterPose,frame:number,fps:number,getUpPose?:CharacterPose,options?:CombatRagdollPipelineOptions):CombatRagdollPipelineResult {
   return stepCombatRagdollPipeline(rig,physics,ragdoll,grounding,capsule,colliders,basePose,frame,fps,getUpPose,options);
 }
+
+
+import { createCombatRagdollAnimationState, transitionCombatRagdollAnimation, type CombatRagdollAnimationState, type CombatRagdollAnimationMode } from './combatRagdollAnimationState';
+import { blendCombatRagdollPoses, type CombatRagdollPoseBlendResult } from './combatRagdollPoseBlend';
+import { driveCombatRagdollAnimation, type CombatRagdollAnimationDriverResult } from './combatRagdollAnimationDriver';
+import { updateCombatRagdollAnimationRuntime, type CombatRagdollAnimationRuntimeOptions } from './combatRagdollAnimationRuntime';
+
+/** Creates the persistent animation-mode state paired with a character ragdoll. */
+export function createThreeCharacterCombatRagdollAnimationState(characterId:string,rigId:string,frame=0):CombatRagdollAnimationState {
+  return createCombatRagdollAnimationState(characterId,rigId,frame);
+}
+/** Changes between locomotion, falling, grounded ragdoll and get-up animation modes. */
+export function transitionThreeCharacterCombatRagdollAnimation(previous:CombatRagdollAnimationState,phase:CharacterRagdollState['phase'],grounded:boolean,frame:number,blendFrames=8):CombatRagdollAnimationState {
+  return transitionCombatRagdollAnimation(previous,phase,grounded,frame,blendFrames);
+}
+/** Blends animated and ragdoll joint rotations using the active transition timeline. */
+export function blendThreeCharacterCombatRagdollPoses(rig:CharacterRig,animatedPose:CharacterPose,ragdollPose:CharacterPose,state:CombatRagdollAnimationState,frame:number,weight=1):CombatRagdollPoseBlendResult {
+  return blendCombatRagdollPoses(rig,animatedPose,ragdollPose,state,frame,{weight});
+}
+/** Advances ragdoll angular motion or get-up recovery and blends it with the animated pose. */
+export function driveThreeCharacterCombatRagdollAnimation(rig:CharacterRig,animatedPose:CharacterPose,ragdoll:CharacterRagdollState,animation:CombatRagdollAnimationState,frame:number,fps:number,grounded:boolean,options?:CombatRagdollAnimationRuntimeOptions):CombatRagdollAnimationDriverResult {
+  return updateCombatRagdollAnimationRuntime(rig,animatedPose,ragdoll,animation,frame,fps,grounded,options);
+}
