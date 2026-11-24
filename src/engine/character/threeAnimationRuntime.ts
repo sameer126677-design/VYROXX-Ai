@@ -1090,3 +1090,26 @@ export function calculateThreeCharacterPelvisAdaptation(feet:CharacterFootAdapta
 export function stepThreeCharacterGroundedIK(input:CharacterGroundedIKInput):CharacterGroundedIKResult {
   return stepCharacterGroundedIK(input);
 }
+
+
+import { createCharacterBalanceState, type CharacterBalanceState } from './characterBalanceState';
+import { predictCharacterBalanceMotion, type CharacterBalancePrediction } from './characterBalancePrediction';
+import { applyCharacterBalancePosture, type CharacterBalancePosture } from './characterBalancePosture';
+import { stepCharacterBalancePipeline, type CharacterBalancePipelineInput, type CharacterBalancePipelineResult } from './characterBalancePipeline';
+
+/** Creates persistent per-character balance tracking state. */
+export function createThreeCharacterBalanceState(rigId:string):CharacterBalanceState {
+  return createCharacterBalanceState(rigId);
+}
+/** Estimates center-of-mass velocity and acceleration for predictive balance. */
+export function predictThreeCharacterBalanceMotion(center:Parameters<typeof predictCharacterBalanceMotion>[0],frame:number,fps:number,state:CharacterBalanceState,velocity?:{x:number;z:number}):CharacterBalancePrediction {
+  return predictCharacterBalanceMotion(center,frame,fps,state,velocity);
+}
+/** Adds bounded torso counter-lean to an existing animated pose. */
+export function applyThreeCharacterBalancePosture(rig:CharacterRig,pose:CharacterPose,correction:{x:number;z:number},prediction:{x:number;z:number},strength=0.65,maxLean=0.28):CharacterBalancePosture {
+  return applyCharacterBalancePosture(rig,pose,correction,prediction,strength,maxLean);
+}
+/** Runs predictive center-of-mass balance against caller-supplied support points. */
+export function stepThreeCharacterBalancePipeline(input:CharacterBalancePipelineInput):CharacterBalancePipelineResult {
+  return stepCharacterBalancePipeline(input);
+}
