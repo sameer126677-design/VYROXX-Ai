@@ -11,7 +11,7 @@ import { solveLimbIK3D, type LimbIK3DRequest } from './ik3d';
 import { solveFullBodyIK3D, type FullBodyIKOptions } from './fullBodyIK';
 import { solveCharacterBalance3D, solveDynamicCharacterBalance3D, type BalanceOptions, type DynamicBalanceOptions } from './balance';
 import { evaluateGroundContactPlan, applyGroundContactPlan, createFootPlantState, updateFootPlantTracker, type FootPlantState, type GroundContactPlan, type GroundContactOptions } from './groundContact';
-import { evaluateLocomotionState, applyLocomotionPose, type LocomotionInput, type LocomotionOptions } from './locomotion';
+import { evaluateLocomotionState, applyLocomotionPose, updateLocomotionController, createLocomotionControllerState, type LocomotionInput, type LocomotionOptions, type LocomotionControllerState } from './locomotion';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
 export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; dynamicBalance?: DynamicBalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions }; }
@@ -46,6 +46,7 @@ export function evaluateThreeCharacterFrame(
 export interface StatefulThreeCharacterFrameResult {
   pose: CharacterPose;
   footPlantState: FootPlantState;
+  locomotionState: LocomotionControllerState;
   groundContactPlan: GroundContactPlan;
   frame: number;
 }
@@ -55,6 +56,7 @@ export interface StatefulThreeCharacterFrameOptions {
   unitScale?: number;
   groundContact?: GroundContactOptions;
   locomotion?: LocomotionInput & { options?: LocomotionOptions };
+  locomotionState?: LocomotionControllerState;
   ik3D?: LimbIK3DRequest[];
   fullBodyIK?: FullBodyIKOptions;
   dynamicBalance?: Omit<DynamicBalanceOptions, 'supportPoints'>;
@@ -72,11 +74,13 @@ export function updateThreeCharacterFrameWithContactState(
   frame: number,
   fps: number,
   previousState: FootPlantState = createFootPlantState(rig.id),
-  options: StatefulThreeCharacterFrameOptions = {}
+  options: StatefulThreeCharacterFrameOptions = {},
+  previousLocomotionState: LocomotionControllerState = options.locomotionState ?? createLocomotionControllerState(options.locomotion?.heading ?? 0)
 ): StatefulThreeCharacterFrameResult {
-  const locomotion = options.locomotion
-    ? evaluateLocomotionState({ ...options.locomotion, frame, fps }, options.locomotion.options)
+  const controlledLocomotion = options.locomotion
+    ? updateLocomotionController(options.locomotion, frame, fps, previousLocomotionState, options.locomotion.options)
     : undefined;
+  const locomotion = controlledLocomotion?.state;
   const activePreset = locomotion?.preset ?? preset;
   const clip = options.clip ?? createMotionClip(rig, activePreset, fps, options.durationSec ?? 2);
   let pose = sampleMotionClip(rig, clip, frame, fps, locomotion?.phase);
@@ -84,7 +88,7 @@ export function updateThreeCharacterFrameWithContactState(
   const contactOptions: GroundContactOptions = {
     ...options.groundContact,
     ...(locomotion ? {
-      rootVelocity: options.locomotion?.velocity ?? { x: 0, z: 0 },
+      rootVelocity: locomotion ? { x: locomotion.speed * Math.sin(locomotion.heading), z: locomotion.speed * Math.cos(locomotion.heading) } : { x: 0, z: 0 },
       strideLength: locomotion.strideLength,
       stepHeight: locomotion.stepHeight,
       cycleRate: locomotion.cycleRate
@@ -102,14 +106,14 @@ export function updateThreeCharacterFrameWithContactState(
       pose = solveDynamicCharacterBalance3D(rig, pose, {
         ...options.dynamicBalance,
         supportPoints,
-        velocity: options.dynamicBalance.velocity ?? options.locomotion?.velocity
+        velocity: options.dynamicBalance.velocity ?? (locomotion ? { x: locomotion.speed * Math.sin(locomotion.heading), z: locomotion.speed * Math.cos(locomotion.heading) } : undefined)
       }).pose;
     } else if (options.balance) {
       pose = solveCharacterBalance3D(rig, pose, { ...options.balance, supportPoints }).pose;
     }
   }
   updateThreeRigFromPose(runtime, rig, pose, options.unitScale ?? 1);
-  return { pose, footPlantState: tracked.state, groundContactPlan: tracked.plan, frame };
+  return { pose, footPlantState: tracked.state, locomotionState: controlledLocomotion?.controllerState ?? previousLocomotionState, groundContactPlan: tracked.plan, frame };
 }
 
 /** Updates an existing runtime without rebuilding its Three.js hierarchy. */
