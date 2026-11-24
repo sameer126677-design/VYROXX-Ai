@@ -15,7 +15,15 @@ export function stepCharacterUnifiedController(input:CharacterUnifiedControllerI
  if(input.grounding){
   if(!groundedState) throw new Error('Grounded IK state must be initialized when grounding is enabled.');
   groundedIK=stepCharacterGroundedIK({rig,pose,frame,fps,state:groundedState,surface:input.grounding.surface,rootPosition:input.grounding.rootPosition,contact:input.grounding.contact,adaptation:input.grounding.adaptation,iterations:input.grounding.iterations,tolerance:input.grounding.tolerance,pelvisResponse:input.grounding.pelvisResponse,maxPelvisOffset:input.grounding.maxPelvisOffset});
-  pose=groundedIK.pose;groundedState=groundedIK.state;
+  pose=groundedIK.pose;
+  if(groundedIK.pelvis.supported){
+   const root=rig.joints.find(j=>j.id===rig.rootJointId);
+   if(root){
+    const joints=pose.joints.map(j=>j.jointId===root.id?{...j,position:{x:(j.position??root.bindPosition).x+groundedIK!.pelvis.offset.x,y:(j.position??root.bindPosition).y+groundedIK!.pelvis.offset.y,z:(j.position??root.bindPosition).z+groundedIK!.pelvis.offset.z}}:j);
+    pose={...pose,joints};
+   }
+  }
+  groundedState=groundedIK.state;
  }
  if(input.balance){
   if(!balanceState) throw new Error('Balance state must be initialized when balance is enabled.');
