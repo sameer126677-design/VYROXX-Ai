@@ -79,7 +79,7 @@ export function updateThreeCharacterFrameWithContactState(
     : undefined;
   const activePreset = locomotion?.preset ?? preset;
   const clip = options.clip ?? createMotionClip(rig, activePreset, fps, options.durationSec ?? 2);
-  let pose = sampleMotionClip(rig, clip, frame, fps);
+  let pose = sampleMotionClip(rig, clip, frame, fps, locomotion?.phase);
   if (locomotion) pose = applyLocomotionPose(rig, pose, locomotion);
   const contactOptions: GroundContactOptions = {
     ...options.groundContact,

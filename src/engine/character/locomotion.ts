@@ -12,6 +12,19 @@ export interface LocomotionInput {
 export interface LocomotionOptions {
   walkSpeed?:number; runSpeed?:number; sprintSpeed?:number;
   accelerationResponse?:number; maxLean?:number; strideScale?:number; stepHeightScale?:number;
+  turnResponse?:number; idleSpeed?:number; gaitBlendSpeed?:number;
+}
+export interface LocomotionControllerState {
+  velocity:{x:number;z:number};
+  acceleration:{x:number;z:number};
+  heading:number;
+  phase:number;
+  lastFrame:number|null;
+  gait:LocomotionState['gait'];
+}
+export interface StatefulLocomotionResult {
+  state:LocomotionState;
+  controllerState:LocomotionControllerState;
 }
 export interface LocomotionState {
   speed:number; normalizedSpeed:number; gait:'idle'|'walk'|'run'|'sprint'; preset:MotionPreset;
@@ -59,4 +72,41 @@ export function createLocomotionFrame(rig:CharacterRig,input:LocomotionInput,opt
   const state=evaluateLocomotionState(input,options),frame=Math.max(0,input.frame??0);
   const pose:CharacterPose={rigId:rig.id,frame,joints:[]};
   return{state,pose:applyLocomotionPose(rig,pose,state),groundContact:{rootVelocity:{...input.velocity},strideLength:state.strideLength,stepHeight:state.stepHeight,cycleRate:state.cycleRate}};
+}
+
+
+/** Creates serializable state for smooth, sequential locomotion evaluation. */
+export function createLocomotionControllerState(heading=0):LocomotionControllerState {
+  return {velocity:{x:0,z:0},acceleration:{x:0,z:0},heading,phase:0,lastFrame:null,gait:'idle'};
+}
+/**
+ * Smooths target velocity and heading while advancing gait phase by elapsed
+ * time. State is caller-owned; reset it before evaluating an earlier frame.
+ */
+export function updateLocomotionController(
+  input:LocomotionInput,
+  frame:number,
+  fps:number,
+  previous:LocomotionControllerState=createLocomotionControllerState(input.heading??0),
+  options:LocomotionOptions={}
+):StatefulLocomotionResult {
+  if(previous.lastFrame!==null&&frame<previous.lastFrame) {
+    throw new Error('Locomotion controller requires non-decreasing frames; reset state before seeking backwards.');
+  }
+  const safeFps=Math.max(1,fps);
+  const deltaFrames=previous.lastFrame===null?0:frame-previous.lastFrame;
+  const dt=deltaFrames/safeFps;
+  const target={x:Number.isFinite(input.velocity.x)?input.velocity.x:0,z:Number.isFinite(input.velocity.z)?input.velocity.z:0};
+  const response=Math.max(0.1,options.accelerationResponse??1.8);
+  const blend=dt<=0?1:1-Math.exp(-response*dt);
+  const velocity={x:previous.velocity.x+(target.x-previous.velocity.x)*blend,z:previous.velocity.z+(target.z-previous.velocity.z)*blend};
+  const acceleration=dt>0?{x:(velocity.x-previous.velocity.x)/dt,z:(velocity.z-previous.velocity.z)/dt}:{x:0,z:0};
+  const targetHeading=Number.isFinite(input.heading)?input.heading!:Math.hypot(velocity.x,velocity.z)>0.08?Math.atan2(velocity.x,velocity.z):previous.heading;
+  const turnBlend=dt<=0?1:1-Math.exp(-Math.max(0.1,options.turnResponse??5)*dt);
+  const heading=previous.heading+angleDelta(previous.heading,targetHeading)*turnBlend;
+  const base=evaluateLocomotionState({...input,velocity,acceleration,heading,previousHeading:previous.heading,frame,fps:safeFps},options);
+  const phase=previous.phase+dt*base.cycleRate*Math.PI*2;
+  const state:LocomotionState={...base,phase,turnRate:dt>0?angleDelta(previous.heading,heading)/dt:0};
+  const controllerState:LocomotionControllerState={velocity,acceleration,heading,phase,lastFrame:frame,gait:base.gait};
+  return {state,controllerState};
 }

@@ -16,13 +16,13 @@ function pose(jointId: string, x = 0, y = 0, z = 0): JointPose {
 }
 
 /** Procedural keyframe-free motion sampler; deterministic at any frame. */
-export function sampleMotionClip(rig: CharacterRig, clip: MotionClip, frame: number, fps: number): CharacterPose {
+export function sampleMotionClip(rig: CharacterRig, clip: MotionClip, frame: number, fps: number, phaseOverride?: number): CharacterPose {
   const validation = validateCharacterRig(rig);
   if (!validation.valid) throw new Error(`Invalid rig: ${validation.errors.join(' ')}`);
   if (clip.rigId !== rig.id) throw new Error('Motion clip belongs to a different rig.');
   const duration = Math.max(1, clip.durationFrames);
   const sampleFrame = clip.loop ? ((frame % duration) + duration) % duration : Math.max(0, Math.min(duration, frame));
-  const phase = (sampleFrame / Math.max(1, duration)) * Math.PI * 2 * Math.max(0.1, clip.speed);
+  const phase = Number.isFinite(phaseOverride) ? phaseOverride! : (sampleFrame / Math.max(1, duration)) * Math.PI * 2 * Math.max(0.1, clip.speed);
   const swing = Math.sin(phase) * clip.amplitude;
   const bob = Math.abs(Math.sin(phase * 2)) * clip.amplitude * 0.16;
   let joints: JointPose[] = [];
