@@ -608,3 +608,37 @@ export function updateThreeCharacterCombatStatuses(previous:CombatStatusState,fr
 export function selectThreeCharacterCombatTarget(ownerId:string,origin:{x:number;y:number;z:number},candidates:CombatTargetCandidate[],options?:Parameters<typeof selectCombatTarget>[3]):CombatTargetResult {
   return selectCombatTarget(ownerId,origin,candidates,options);
 }
+
+import { applyCombatWeaponToMove, applyCombatWeaponToHitbox, type CombatWeaponProfile } from './combatWeapons';
+import { resolveCombatArmor, type CombatArmorProfile, type CombatArmorResult } from './combatArmor';
+import { chooseCombatAIAction, type CombatAIContext, type CombatAIOptions, type CombatAIChoice } from './combatAI';
+import { createCombatEventLedger, appendCombatEvent, readCombatEvents, type CombatEventLedger, type CombatEventRecord } from './combatEventLedger';
+
+/** Applies weapon tuning to an authored move before it is submitted to the combat state machine. */
+export function prepareThreeCharacterWeaponMove(move:CombatMoveDefinition,weapon:CombatWeaponProfile):CombatMoveDefinition {
+  return applyCombatWeaponToMove(move,weapon);
+}
+/** Applies weapon tuning to an authored world-space attack volume. */
+export function prepareThreeCharacterWeaponHitbox(hitbox:CombatHitbox,weapon:CombatWeaponProfile):CombatHitbox {
+  return applyCombatWeaponToHitbox(hitbox,weapon);
+}
+/** Resolves armor mitigation for a detected contact; caller retains the returned durability state. */
+export function resolveThreeCharacterCombatArmor(contact:CombatHitContact,armor:CombatArmorProfile):CombatArmorResult {
+  return resolveCombatArmor(contact,armor);
+}
+/** Chooses a deterministic rule-based combat action for an AI-controlled character. */
+export function chooseThreeCharacterCombatAI(context:CombatAIContext,moves:CombatMoveDefinition[],options?:CombatAIOptions):CombatAIChoice {
+  return chooseCombatAIAction(context,moves,options);
+}
+/** Creates a timeline ledger for combat events. */
+export function createThreeCharacterCombatEventLedger(frame=0):CombatEventLedger {
+  return createCombatEventLedger(frame);
+}
+/** Records a combat event once, ignoring duplicate event ids. */
+export function recordThreeCharacterCombatEvent(previous:CombatEventLedger,event:CombatEventRecord):CombatEventLedger {
+  return appendCombatEvent(previous,event);
+}
+/** Reads a chronological combat event range for replay or UI presentation. */
+export function readThreeCharacterCombatEvents(ledger:CombatEventLedger,fromFrame=0,toFrame=Infinity):CombatEventRecord[] {
+  return readCombatEvents(ledger,fromFrame,toFrame);
+}
