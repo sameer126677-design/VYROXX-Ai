@@ -213,10 +213,27 @@ export function updateInteractionObjectState(
   previous: InteractionObjectState,
   command: { type: 'grab'; hand: InteractionHand; frame: number } | { type: 'release'; frame: number }
 ): InteractionObjectState {
-  const next = transitionInteractionObject(previous, command);
+  const next = transitionInteractionObject(previous, { ...command, ...(command.type === 'grab' ? { ownerCharacterId: model.appearance.id } : {}) });
   if (next === previous) return previous;
   if (command.type === 'grab') attachInteractionObject(model, object, command.hand);
   else if (previous.status === 'held') detachInteractionObject(model, object);
+  return next;
+}
+
+/** Transfers an attached object directly between two characters while preserving its world transform. */
+export function transferInteractionObjectState(
+  fromModel: ProceduralCharacterModel,
+  toModel: ProceduralCharacterModel,
+  object: Object3D,
+  previous: InteractionObjectState,
+  command: { hand: InteractionHand; frame: number }
+): InteractionObjectState {
+  if (fromModel === toModel || fromModel.root === toModel.root) throw new Error('Object transfer requires two separate character models.');
+  if (previous.status !== 'held') throw new Error('Only a held object can be transferred.');
+  if (previous.ownerCharacterId && previous.ownerCharacterId !== fromModel.appearance.id) throw new Error('The source character does not own this object.');
+  const next = transitionInteractionObject(previous, { type: 'transfer', hand: command.hand, frame: command.frame, ownerCharacterId: toModel.appearance.id });
+  if (next === previous) return previous;
+  attachInteractionObject(toModel, object, command.hand);
   return next;
 }
 
