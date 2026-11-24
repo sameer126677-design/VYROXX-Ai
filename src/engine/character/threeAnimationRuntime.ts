@@ -26,6 +26,7 @@ import { applyCharacterObjectForce, type CharacterObjectForceState, type Charact
 import { applyCharacterPairForce, type CharacterPairForceState, type CharacterPairForceRequest, type CharacterPairForceResult } from './characterPairForce';
 import { recoverCharacterBalance, type CharacterBalanceRecoveryState, type CharacterBalanceRecoveryOptions, type CharacterBalanceRecoveryResult } from './characterBalanceRecovery';
 import { applyCharacterRagdollImpulse, stepCharacterRagdoll, recoverCharacterFromRagdoll, type CharacterRagdollState, type CharacterRagdollOptions, type CharacterRagdollStep } from './characterRagdoll';
+import { createCharacterImpactState, sampleCharacterImpactReaction, type CharacterImpactRequest, type CharacterImpactState, type CharacterImpactSample } from './characterImpactReaction';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
 export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; dynamicBalance?: DynamicBalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions }; }
@@ -461,6 +462,31 @@ export function updateCharacterRagdollRecovery(
     throw new Error('Procedural character does not match the ragdoll recovery state.');
   }
   const result = recoverCharacterFromRagdoll(rig, previous, getUpPose, frame, durationFrames);
+  updateThreeRigFromPose(model.rig, rig, result.pose);
+  return result;
+}
+
+
+/** Creates a deterministic impact reaction for a specific character and hit region. */
+export function createCharacterImpactReaction(
+  rig: CharacterRig,
+  request: CharacterImpactRequest
+): CharacterImpactState {
+  return createCharacterImpactState(rig, request);
+}
+
+/** Samples and applies a hit reaction over the supplied base animation pose. */
+export function updateCharacterImpactReaction(
+  model: ProceduralCharacterModel,
+  rig: CharacterRig,
+  basePose: CharacterPose,
+  state: CharacterImpactState,
+  frame: number
+): CharacterImpactSample {
+  if (model.appearance.id !== state.characterId) {
+    throw new Error('Procedural character does not match the impact reaction state.');
+  }
+  const result = sampleCharacterImpactReaction(rig, basePose, state, frame);
   updateThreeRigFromPose(model.rig, rig, result.pose);
   return result;
 }
