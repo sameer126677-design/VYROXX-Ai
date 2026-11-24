@@ -5,7 +5,7 @@ import { createMotionClip, sampleMotionClip, type MotionPreset, type MotionClip 
 import { createThreeRigRuntime, updateThreeRigFromPose, type ThreeRigOptions, type ThreeRigRuntime } from './threeRig';
 import { sampleLipSync, type LipSyncTrack } from './lipSync';
 import { evaluateCharacterActionSequence, type CharacterActionSequence, type CharacterActionFrame } from './actionSequence';
-import { setCharacterHandGesture, setCharacterGaze, setCharacterViseme } from './proceduralCharacter';
+import { setCharacterHandGesture } from './proceduralCharacter';
 
 export interface ThreeCharacterFrame {
   runtime: ThreeRigRuntime;
