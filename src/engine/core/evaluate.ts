@@ -4,6 +4,7 @@ import { directSceneCamera, sampleCameraTrack } from '../cinematic/cameraDirecto
 import { buildSceneVisualBlueprints } from '../visuals/proceduralBuilder';
 import { buildCompositePlan, evaluateCompositeFrame, type CompositeFrame, type CompositePlan } from './compositor';
 import { decideImageProviderUse } from './imageProviderPolicy';
+import { evaluateSceneHierarchy } from './nodeHierarchy';
 
 export interface EvaluatedFrame {
   frame: number;
@@ -21,6 +22,7 @@ export interface EvaluatedFrame {
 export function evaluateCreationFrame(document: CreationDocument, frame: number): EvaluatedFrame {
   const safeFrame = Math.max(0, Math.min(Math.max(0, document.timeline.totalFrames - 1), Math.floor(frame)));
   const scene = getSceneAtFrame(document.scenes, safeFrame);
+  const evaluatedScene = scene ? evaluateSceneHierarchy(scene) : null;
   const cameraTrack = scene ? directSceneCamera(scene, document.timeline.fps) : null;
   const composite = buildCompositePlan(document);
   return {
@@ -28,7 +30,7 @@ export function evaluateCreationFrame(document: CreationDocument, frame: number)
     timeSec: safeFrame / Math.max(1, document.timeline.fps),
     sceneId: scene?.id ?? null,
     localFrame: scene ? safeFrame - scene.startFrame : 0,
-    blueprints: scene ? buildSceneVisualBlueprints(scene) : [],
+    blueprints: evaluatedScene ? buildSceneVisualBlueprints(evaluatedScene) : [],
     camera: cameraTrack ? sampleCameraTrack(cameraTrack, safeFrame) : null,
     composite,
     compositeFrame: evaluateCompositeFrame(composite, safeFrame),

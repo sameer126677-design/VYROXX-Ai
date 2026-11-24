@@ -9,6 +9,7 @@ export * from './imageProviderPolicy';
 export * from './rendererBridge';
 export * from './compositor';
 export * from './evaluate';
+export * from './nodeHierarchy';
 export * from '../character/rig';
 export * from '../character/animation';
 export * from '../character/cutoutRig';
