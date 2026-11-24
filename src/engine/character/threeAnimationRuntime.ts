@@ -19,6 +19,7 @@ import type { Object3D } from 'three';
 import { evaluateCharacterPairInteraction, type CharacterPairInteractionRequest, type CharacterPairInteractionResult } from './pairInteraction';
 import { transitionCharacterObjectHandover, type CharacterObjectHandoverState, type CharacterObjectHandoverEvent } from './objectHandover';
 import { applyEnvironmentInteractionTransform, transitionEnvironmentInteraction, type EnvironmentInteractionState, type EnvironmentInteractionEvent } from './environmentInteraction';
+import { applySharedPayloadTransform, evaluatePhysicalCoordination, type PhysicalCoordinationRequest, type PhysicalCoordinationState, type PhysicalCoordinationResult } from './physicalCoordination';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
 export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; dynamicBalance?: DynamicBalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions }; }
@@ -307,4 +308,25 @@ export function sampleEnvironmentObjectInteraction(
   frame: number
 ): void {
   applyEnvironmentInteractionTransform(object, state, frame);
+}
+
+
+/** Updates both character rigs and their shared payload from one coordinated timeline sample. */
+export function updateCharacterPhysicalCoordination(
+  firstModel: ProceduralCharacterModel,
+  secondModel: ProceduralCharacterModel,
+  payload: Object3D,
+  request: PhysicalCoordinationRequest,
+  state: PhysicalCoordinationState,
+  frame: number
+): PhysicalCoordinationResult {
+  if (firstModel.appearance.id !== state.firstCharacterId || secondModel.appearance.id !== state.secondCharacterId) {
+    throw new Error('Physical coordination models do not match the character ids in state.');
+  }
+  if (firstModel.rig.root === secondModel.rig.root) throw new Error('Physical coordination requires two distinct character model runtimes.');
+  const result = evaluatePhysicalCoordination(request, state, frame);
+  updateThreeRigFromPose(firstModel.rig, request.firstRig, result.firstPose);
+  updateThreeRigFromPose(secondModel.rig, request.secondRig, result.secondPose);
+  applySharedPayloadTransform(payload, state, frame);
+  return result;
 }
