@@ -901,3 +901,27 @@ export function calculateThreeCharacterCombatFootPlantCorrection(state:CombatFoo
 export function blendThreeCharacterCombatLocomotion(action:CombatMovementAction,speed:number,footwork:CombatFootworkSample|null):CombatLocomotionBlend {
   return blendCombatLocomotion(action,speed,footwork);
 }
+
+
+import { stepCombatPhysicsPipeline, type CombatPhysicsPipelineResult } from './combatPhysicsPipeline';
+import { resolveCombatContactVelocity, type CombatContactResponseOptions, type CombatContactResponseResult } from './combatContactResponse';
+import { recoverCombatPhysicsBalance } from './combatBalanceBridge';
+import type { CharacterBalanceRecoveryState, CharacterBalanceRecoveryOptions, CharacterBalanceRecoveryResult } from './characterBalanceRecovery';
+import { createCombatPhysicsSnapshot, type CombatPhysicsSnapshot } from './combatPhysicsState';
+
+/** Runs combat acceleration and the existing character collision solver in one frame step. */
+export function stepThreeCharacterCombatPhysics(previous:CharacterPhysicsState,desiredVelocity:Vec3,capsule:CharacterCapsule,colliders:EnvironmentCollider[],frame:number,fps:number,movementOptions?:CombatMovementPhysicsOptions,physicsOptions?:CharacterPhysicsOptions):CombatPhysicsPipelineResult {
+  return stepCombatPhysicsPipeline(previous,desiredVelocity,capsule,colliders,frame,fps,movementOptions,physicsOptions);
+}
+/** Applies slide/stop response to velocity using contacts returned by the collision solver. */
+export function resolveThreeCharacterCombatContactVelocity(previous:CharacterPhysicsState,contacts:CharacterPhysicsStep['contacts'],frame:number,options?:CombatContactResponseOptions):CombatContactResponseResult {
+  return resolveCombatContactVelocity(previous,contacts,frame,options);
+}
+/** Runs the existing support-polygon balance recovery through the combat runtime. */
+export function recoverThreeCharacterCombatBalance(rig:CharacterRig,pose:CharacterPose,physics:CharacterPhysicsState,previous:CharacterBalanceRecoveryState,frame:number,fps:number,options:CharacterBalanceRecoveryOptions):CharacterBalanceRecoveryResult {
+  return recoverCombatPhysicsBalance(rig,pose,physics,previous,frame,fps,options);
+}
+/** Captures a compact, deterministic physics snapshot for animation/debug pipelines. */
+export function createThreeCharacterCombatPhysicsSnapshot(state:CharacterPhysicsState):CombatPhysicsSnapshot {
+  return createCombatPhysicsSnapshot(state);
+}
