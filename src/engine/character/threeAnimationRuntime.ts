@@ -817,3 +817,37 @@ export function driveThreeCharacterCombatAnimation(previous:CombatAnimationState
 export function blendThreeCharacterCombatAnimation(rig:CharacterRig,basePose:CharacterPose,request:CombatAnimationRequest,frame:number,options:CombatAnimationBlendOptions):CharacterPose {
   return blendCombatAnimationPose(rig,basePose,request,frame,options);
 }
+
+import { createCombatAnimationTransition, canInterruptCombatAnimation, type CombatAnimationTransition } from './combatAnimationTransitions';
+import { sampleCombatFootwork, type CombatFootworkSample } from './combatFootwork';
+import { sampleSynchronizedCombatMotion, type CombatMotionSyncResult } from './combatMotionSync';
+import { createCombatAnimationTransitionState, transitionCombatAnimation, sampleCombatAnimationTransition, type CombatAnimationTransitionState } from './combatAnimationTransitionState';
+
+/** Builds a transition policy between two procedural combat animation actions. */
+export function createThreeCharacterCombatAnimationTransition(from:CombatAnimationAction|'none',to:CombatAnimationAction|'none',blendFrames?:number,interruptible?:boolean):CombatAnimationTransition {
+  return createCombatAnimationTransition(from,to,{blendFrames,interruptible});
+}
+/** Checks whether the current combat animation may be interrupted by the next action. */
+export function canInterruptThreeCharacterCombatAnimation(current:CombatAnimationAction|'none',next:CombatAnimationAction):boolean {
+  return canInterruptCombatAnimation(current,next);
+}
+/** Samples foot planting, push-off, flight and landing weights for a movement command. */
+export function sampleThreeCharacterCombatFootwork(action:CombatMovementAction,elapsedFrames:number,durationFrames:number,side:'left'|'right'='right'):CombatFootworkSample {
+  return sampleCombatFootwork(action,elapsedFrames,durationFrames,side);
+}
+/** Samples combat movement, animation and footwork on a shared timeline. */
+export function sampleThreeCharacterCombatMotion(movement:CombatMovementState|null,animation:CombatAnimationState,frame:number):CombatMotionSyncResult {
+  return sampleSynchronizedCombatMotion(movement,animation,frame);
+}
+/** Creates state for tracking procedural animation transitions. */
+export function createThreeCharacterCombatAnimationTransitionState(frame=0):CombatAnimationTransitionState {
+  return createCombatAnimationTransitionState(frame);
+}
+/** Advances to a new animation action when the current action is interruptible. */
+export function transitionThreeCharacterCombatAnimation(previous:CombatAnimationTransitionState,next:CombatAnimationAction,frame:number,blendFrames?:number):CombatAnimationTransitionState {
+  return transitionCombatAnimation(previous,next,frame,blendFrames);
+}
+/** Samples the blend weight of an active animation transition. */
+export function sampleThreeCharacterCombatAnimationTransition(previous:CombatAnimationTransitionState,frame:number):ReturnType<typeof sampleCombatAnimationTransition> {
+  return sampleCombatAnimationTransition(previous,frame);
+}
