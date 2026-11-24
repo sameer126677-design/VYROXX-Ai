@@ -1,6 +1,7 @@
 import type { CharacterPose, CharacterRig } from './rig';
 import { blendCharacterPoses } from './animation';
 import { createMotionClip, sampleMotionClip, type MotionPreset } from './animation';
+import type { CharacterExpression, CharacterHandGesture } from './proceduralCharacter';
 
 export interface CharacterActionSegment {
   id: string;
@@ -11,9 +12,14 @@ export interface CharacterActionSegment {
   amplitude?: number;
   speed?: number;
   loop?: boolean;
+  expression?: CharacterExpression;
+  leftHand?: CharacterHandGesture;
+  rightHand?: CharacterHandGesture;
+  gaze?: { x: number; y: number };
+  viseme?: import('./proceduralCharacter').CharacterViseme;
 }
 export interface CharacterActionSequence { rigId: string; segments: CharacterActionSegment[]; }
-export interface CharacterActionFrame { pose: CharacterPose; segmentId: string | null; progress: number; }
+export interface CharacterActionFrame { pose: CharacterPose; segmentId: string | null; progress: number; expression?: CharacterExpression; leftHand?: CharacterHandGesture; rightHand?: CharacterHandGesture; gaze?: { x: number; y: number }; viseme?: import('./proceduralCharacter').CharacterViseme; }
 
 /** Evaluates a frame-based action timeline, blending into each new action. */
 export function evaluateCharacterActionSequence(rig:CharacterRig,sequence:CharacterActionSequence,frame:number,fps:number):CharacterActionFrame {
@@ -29,7 +35,7 @@ export function evaluateCharacterActionSequence(rig:CharacterRig,sequence:Charac
     const previous=segments[activeIndex-1],previousClip=createMotionClip(rig,previous.motion,fps,previous.durationFrames/Math.max(1,fps),{amplitude:previous.amplitude,speed:previous.speed,loop:previous.loop??false});
     const previousFrame=Math.max(0,Math.min(previous.durationFrames,previous.durationFrames-(active.startFrame-previous.startFrame)+localFrame));
     const from=sampleMotionClip(rig,previousClip,previousFrame,fps);
-    return {pose:blendCharacterPoses(from,pose,Math.max(0,Math.min(1,localFrame/Math.max(1,blendFrames)))),segmentId:active.id,progress:localFrame/active.durationFrames};
+    return {pose:blendCharacterPoses(from,pose,Math.max(0,Math.min(1,localFrame/Math.max(1,blendFrames)))),segmentId:active.id,progress:localFrame/active.durationFrames,expression:active.expression,leftHand:active.leftHand,rightHand:active.rightHand,gaze:active.gaze,viseme:active.viseme};
   }
-  return {pose,segmentId:active.id,progress:Math.max(0,Math.min(1,localFrame/active.durationFrames))};
+  return {pose,segmentId:active.id,progress:Math.max(0,Math.min(1,localFrame/active.durationFrames)),expression:active.expression,leftHand:active.leftHand,rightHand:active.rightHand,gaze:active.gaze,viseme:active.viseme};
 }

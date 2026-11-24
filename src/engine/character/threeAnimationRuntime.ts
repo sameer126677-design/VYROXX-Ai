@@ -4,6 +4,8 @@ import { updateCharacterExpression, setCharacterBlink, setCharacterGaze, setChar
 import { createMotionClip, sampleMotionClip, type MotionPreset, type MotionClip } from './animation';
 import { createThreeRigRuntime, updateThreeRigFromPose, type ThreeRigOptions, type ThreeRigRuntime } from './threeRig';
 import { sampleLipSync, type LipSyncTrack } from './lipSync';
+import { evaluateCharacterActionSequence, type CharacterActionSequence, type CharacterActionFrame } from './actionSequence';
+import { setCharacterHandGesture, setCharacterGaze, setCharacterViseme } from './proceduralCharacter';
 
 export interface ThreeCharacterFrame {
   runtime: ThreeRigRuntime;
@@ -70,4 +72,17 @@ export function updateCharacterFacialAnimation(model:ProceduralCharacterModel,fr
 /** Evaluates the voice viseme track at the requested frame and updates the face. */
 export function updateCharacterLipSync(model:ProceduralCharacterModel,track:LipSyncTrack,frame:number):void {
   const sample=sampleLipSync(track,frame); setCharacterViseme(model,sample.viseme,sample.strength);
+}
+
+
+/** Evaluates a complete action timeline and applies its body and facial performance. */
+export function updateCharacterActionSequence(model:ProceduralCharacterModel,rig:CharacterRig,sequence:CharacterActionSequence,frame:number,fps:number):CharacterActionFrame {
+  const result=evaluateCharacterActionSequence(rig,sequence,frame,fps);
+  updateThreeRigFromPose(model.rig,rig,result.pose);
+  if(result.expression&&model.appearance.expression!==result.expression)updateCharacterExpression(model,result.expression);
+  if(result.leftHand)setCharacterHandGesture(model,'left',result.leftHand);
+  if(result.rightHand)setCharacterHandGesture(model,'right',result.rightHand);
+  if(result.gaze)setCharacterGaze(model,result.gaze.x,result.gaze.y);
+  if(result.viseme)setCharacterViseme(model,result.viseme);
+  return result;
 }
