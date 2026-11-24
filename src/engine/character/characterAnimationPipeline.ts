@@ -29,7 +29,6 @@ export function evaluateCharacterAnimationPipeline(input:CharacterAnimationPipel
  let pose=stages.pose,physical:CombatPhysicalAnimationResult|null=null,ragdoll:CombatRagdollAnimationDriverResult|null=null;
  if(input.physics){
   if(input.physics.characterId!==rig.characterId) throw new Error('Animation pipeline physics character does not match the rig.');
-  if(input.impact&&input.impact.characterId!==rig.characterId) throw new Error('Animation pipeline impact character does not match the rig.');
   physical=evaluateCombatPhysicalAnimation(rig,pose,input.physics,input.contacts??[],frame,input.impact,input.physicalPose);
   pose=physical.pose;
  } else if(input.impact) throw new Error('Physics state is required when applying an impact reaction.');
