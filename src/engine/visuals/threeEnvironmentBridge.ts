@@ -12,7 +12,7 @@ function buildSky(plan: EnvironmentPlan): THREE.Mesh {
       bottomColor: { value: new THREE.Color(plan.sky.bottom) },
     },
     vertexShader: `varying vec3 vDirection; void main(){ vDirection = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-    fragmentShader: `uniform vec3 topColor; uniform vec3 horizonColor; uniform vec3 bottomColor; varying vec3 vDirection; void main(){ float h = normalize(vDirection).y; vec3 color = h > 0.0 ? mix(horizonColor, topColor, smoothstep(0.0, 0.85, h)) : mix(horizonColor, bottomColor, smoothstep(0.0, -0.65, h)); gl_FragColor = vec4(color, 1.0); }`,
+    fragmentShader: `uniform vec3 topColor; uniform vec3 horizonColor; uniform vec3 bottomColor; varying vec3 vDirection; void main(){ float h = normalize(vDirection).y; vec3 color = h > 0.0 ? mix(horizonColor, topColor, smoothstep(0.0, 0.85, h)) : mix(horizonColor, bottomColor, 1.0 - smoothstep(-0.65, 0.0, h)); gl_FragColor = vec4(color, 1.0); }`,
   });
   const sky = new THREE.Mesh(geometry, material);
   sky.name = 'VYROXX_Environment_Sky';
