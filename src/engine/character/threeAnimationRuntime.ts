@@ -20,6 +20,7 @@ import { evaluateCharacterPairInteraction, type CharacterPairInteractionRequest,
 import { transitionCharacterObjectHandover, type CharacterObjectHandoverState, type CharacterObjectHandoverEvent } from './objectHandover';
 import { applyEnvironmentInteractionTransform, transitionEnvironmentInteraction, type EnvironmentInteractionState, type EnvironmentInteractionEvent } from './environmentInteraction';
 import { applySharedPayloadTransform, evaluatePhysicalCoordination, type PhysicalCoordinationRequest, type PhysicalCoordinationState, type PhysicalCoordinationResult } from './physicalCoordination';
+import { applyCharacterPhysicsTransform, stepCharacterPhysics, type CharacterPhysicsState, type CharacterCapsule, type EnvironmentCollider, type CharacterPhysicsOptions, type CharacterPhysicsStep } from './collisionPhysics';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
 export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; dynamicBalance?: DynamicBalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions }; }
@@ -328,5 +329,24 @@ export function updateCharacterPhysicalCoordination(
   updateThreeRigFromPose(firstModel.rig, request.firstRig, result.firstPose);
   updateThreeRigFromPose(secondModel.rig, request.secondRig, result.secondPose);
   applySharedPayloadTransform(payload, state, frame);
+  return result;
+}
+
+
+/** Steps lightweight capsule collision physics and applies the resulting root transform to a procedural character. */
+export function updateCharacterCollisionPhysics(
+  model: ProceduralCharacterModel,
+  previous: CharacterPhysicsState,
+  capsule: CharacterCapsule,
+  colliders: EnvironmentCollider[],
+  frame: number,
+  fps: number,
+  options: CharacterPhysicsOptions = {}
+): CharacterPhysicsStep {
+  if (model.appearance.id !== previous.characterId) {
+    throw new Error('Procedural character does not match the collision physics state.');
+  }
+  const result = stepCharacterPhysics(previous,capsule,colliders,frame,fps,options);
+  applyCharacterPhysicsTransform(model.root,result.state);
   return result;
 }
