@@ -10,7 +10,7 @@ import { applyFootIKToPose, evaluateFootContactPlan, type FootIKOptions } from '
 import { solveLimbIK3D, type LimbIK3DRequest } from './ik3d';
 import { solveFullBodyIK3D, type FullBodyIKOptions } from './fullBodyIK';
 import { solveCharacterBalance3D, solveDynamicCharacterBalance3D, type BalanceOptions, type DynamicBalanceOptions } from './balance';
-import { evaluateGroundContactPlan, applyGroundContactPlan, type GroundContactOptions } from './groundContact';
+import { evaluateGroundContactPlan, applyGroundContactPlan, createFootPlantState, updateFootPlantTracker, type FootPlantState, type GroundContactPlan, type GroundContactOptions } from './groundContact';
 import { evaluateLocomotionState, applyLocomotionPose, type LocomotionInput, type LocomotionOptions } from './locomotion';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
@@ -40,6 +40,76 @@ export function evaluateThreeCharacterFrame(
   pose = applyRequestedIK(rig, pose, options.ik3D, options.fullBodyIK, options.balance, contactOptions, frame, fps, options.dynamicBalance);
   updateThreeRigFromPose(runtime, rig, pose, options.unitScale ?? 1);
   return { runtime, pose, frame };
+}
+
+
+export interface StatefulThreeCharacterFrameResult {
+  pose: CharacterPose;
+  footPlantState: FootPlantState;
+  groundContactPlan: GroundContactPlan;
+  frame: number;
+}
+export interface StatefulThreeCharacterFrameOptions {
+  durationSec?: number;
+  clip?: MotionClip;
+  unitScale?: number;
+  groundContact?: GroundContactOptions;
+  locomotion?: LocomotionInput & { options?: LocomotionOptions };
+  ik3D?: LimbIK3DRequest[];
+  fullBodyIK?: FullBodyIKOptions;
+  dynamicBalance?: Omit<DynamicBalanceOptions, 'supportPoints'>;
+  balance?: Omit<BalanceOptions, 'supportPoints'>;
+}
+/**
+ * Sequential character update with caller-owned persistent foot anchors.
+ * Retain the returned footPlantState and pass it to the next frame. For
+ * timeline seeking, create a fresh state and replay from the desired start.
+ */
+export function updateThreeCharacterFrameWithContactState(
+  runtime: ThreeRigRuntime,
+  rig: CharacterRig,
+  preset: MotionPreset,
+  frame: number,
+  fps: number,
+  previousState: FootPlantState = createFootPlantState(rig.id),
+  options: StatefulThreeCharacterFrameOptions = {}
+): StatefulThreeCharacterFrameResult {
+  const locomotion = options.locomotion
+    ? evaluateLocomotionState({ ...options.locomotion, frame, fps }, options.locomotion.options)
+    : undefined;
+  const activePreset = locomotion?.preset ?? preset;
+  const clip = options.clip ?? createMotionClip(rig, activePreset, fps, options.durationSec ?? 2);
+  let pose = sampleMotionClip(rig, clip, frame, fps);
+  if (locomotion) pose = applyLocomotionPose(rig, pose, locomotion);
+  const contactOptions: GroundContactOptions = {
+    ...options.groundContact,
+    ...(locomotion ? {
+      rootVelocity: options.locomotion?.velocity ?? { x: 0, z: 0 },
+      strideLength: locomotion.strideLength,
+      stepHeight: locomotion.stepHeight,
+      cycleRate: locomotion.cycleRate
+    } : {})
+  };
+  const tracked = updateFootPlantTracker(rig, frame, fps, previousState, contactOptions);
+  pose = applyGroundContactPlan(rig, pose, tracked.plan);
+  if (options.ik3D?.length) {
+    pose = options.ik3D.reduce((current, request) => solveLimbIK3D(rig, current, request).pose, pose);
+  }
+  if (options.fullBodyIK) pose = solveFullBodyIK3D(rig, pose, options.fullBodyIK).pose;
+  const supportPoints = tracked.plan.supportPoints;
+  if (supportPoints.length) {
+    if (options.dynamicBalance) {
+      pose = solveDynamicCharacterBalance3D(rig, pose, {
+        ...options.dynamicBalance,
+        supportPoints,
+        velocity: options.dynamicBalance.velocity ?? options.locomotion?.velocity
+      }).pose;
+    } else if (options.balance) {
+      pose = solveCharacterBalance3D(rig, pose, { ...options.balance, supportPoints }).pose;
+    }
+  }
+  updateThreeRigFromPose(runtime, rig, pose, options.unitScale ?? 1);
+  return { pose, footPlantState: tracked.state, groundContactPlan: tracked.plan, frame };
 }
 
 /** Updates an existing runtime without rebuilding its Three.js hierarchy. */

@@ -51,6 +51,10 @@ function closestPointOnSegment(p:SupportPoint,a:SupportPoint,b:SupportPoint):Sup
   const t=den?Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.z-a.z)*dz)/den)):0;
   return {x:a.x+t*dx,z:a.z+t*dz};
 }
+function supportContains(point:SupportPoint,polygon:SupportPoint[],tolerance:number):boolean {
+  if(polygon.length>=3)return inside(point,polygon);
+  return polygon.length>0&&distance2(point,closestOnPolygon(point,polygon))<=tolerance;
+}
 function closestOnPolygon(point:SupportPoint,polygon:SupportPoint[]):SupportPoint {
   if(polygon.length===1)return polygon[0];
   let best=polygon[0],bestDistance=Infinity;
@@ -93,11 +97,11 @@ export function solveCharacterBalance3D(rig:CharacterRig,pose:CharacterPose,opti
   let correction={x:0,z:0};
   for(let pass=0;pass<iterations;pass++){
     const projected={x:com.x,z:com.z};
-    const isInside=inside(projected,polygon);
+    const isInside=supportContains(projected,polygon,margin);
     const closest=closestOnPolygon(projected,polygon);
     const edgeDistance=distance2(projected,closest);
     let dx=0,dz=0,desired=0;
-    if(!isInside){dx=closest.x-projected.x;dz=closest.z-projected.z;desired=edgeDistance+margin;}
+    if(!isInside){dx=closest.x-projected.x;dz=closest.z-projected.z;desired=polygon.length<3?Math.max(0,edgeDistance-margin):edgeDistance+margin;}
     else if(margin>0&&edgeDistance<margin){dx=supportCenter.x-projected.x;dz=supportCenter.z-projected.z;desired=Math.hypot(dx,dz);}
     if(desired<1e-7)break;
     const step=Math.min(maxCorrection/iterations,desired);
@@ -113,9 +117,9 @@ export function solveCharacterBalance3D(rig:CharacterRig,pose:CharacterPose,opti
     com=centerOfMass(rig,current,options.masses);
   }
   const finalPoint={x:com.x,z:com.z};
-  const stable=inside(finalPoint,polygon);
+  const stable=supportContains(finalPoint,polygon,margin);
   const nearest=closestOnPolygon(finalPoint,polygon);
-  return {pose:current,centerOfMass:com,supportCenter,correction,stable,distanceToSupport:stable?0:distance2(finalPoint,nearest),supportPolygon:polygon};
+  return {pose:current,centerOfMass:com,supportCenter,correction,stable,distanceToSupport:stable?0:Math.max(0,distance2(finalPoint,nearest)- (polygon.length<3?margin:0)),supportPolygon:polygon};
 }
 
 export interface DynamicBalanceOptions extends BalanceOptions {
