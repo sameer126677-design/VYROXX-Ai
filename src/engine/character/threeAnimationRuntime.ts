@@ -574,3 +574,37 @@ export function updateThreeCharacterCombo(
 ): CombatComboResult {
   return advanceCombatCombo(definition,previous,input,frame);
 }
+
+import { createCombatGuardState, updateCombatGuard, type CombatGuardState } from './combatGuard';
+import { resolveCombatDefense, type CombatDefenseResult } from './combatDefenseResolution';
+import { createCombatStatusState, applyCombatStatusEffect, stepCombatStatusEffects, type CombatStatusState, type CombatStatusEffect } from './combatStatusEffects';
+import { selectCombatTarget, type CombatTargetCandidate, type CombatTargetResult } from './combatTargeting';
+
+/** Creates a persistent guard/parry state for a character. */
+export function createThreeCharacterGuardState(characterId:string,frame=0,stamina=100,maxStamina=100):CombatGuardState {
+  return createCombatGuardState(characterId,frame,stamina,maxStamina);
+}
+/** Raises/lowers a guard and optionally opens a short parry window on the rising edge. */
+export function updateThreeCharacterGuard(previous:CombatGuardState,command:{active:boolean;facing:{x:number;y:number;z:number};frame:number;parryWindowFrames?:number;guardBreakFrames?:number}):CombatGuardState {
+  return updateCombatGuard(previous,command);
+}
+/** Resolves a detected hit against the target's current guard state. */
+export function resolveThreeCharacterCombatDefense(contact:CombatHitContact,guard:CombatGuardState,options?:Parameters<typeof resolveCombatDefense>[2]):CombatDefenseResult {
+  return resolveCombatDefense(contact,guard,options);
+}
+/** Creates caller-owned status-effect state for one combatant. */
+export function createThreeCharacterCombatStatus(characterId:string,frame=0):CombatStatusState {
+  return createCombatStatusState(characterId,frame);
+}
+/** Applies or refreshes a timed combat status effect. */
+export function applyThreeCharacterCombatStatus(previous:CombatStatusState,effect:CombatStatusEffect,policy:'refresh'|'extend'|'replace'='refresh'):CombatStatusState {
+  return applyCombatStatusEffect(previous,effect,policy);
+}
+/** Expires timed combat statuses at the requested deterministic frame. */
+export function updateThreeCharacterCombatStatuses(previous:CombatStatusState,frame:number):CombatStatusState {
+  return stepCombatStatusEffects(previous,frame);
+}
+/** Selects the nearest eligible target, optionally constrained by facing and range. */
+export function selectThreeCharacterCombatTarget(ownerId:string,origin:{x:number;y:number;z:number},candidates:CombatTargetCandidate[],options?:Parameters<typeof selectCombatTarget>[3]):CombatTargetResult {
+  return selectCombatTarget(ownerId,origin,candidates,options);
+}
