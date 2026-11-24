@@ -6,6 +6,8 @@ import { createThreeRigRuntime, type ThreeRigRuntime } from './threeRig';
 export type CharacterExpression = 'neutral' | 'happy' | 'sad' | 'angry' | 'surprised';
 export type CharacterAnchor = 'head' | 'chest' | 'waist' | 'left-wrist' | 'right-wrist' | 'left-foot' | 'right-foot';
 export type CharacterAccessory = 'cap' | 'backpack' | 'necklace' | 'wristband' | 'belt' | 'boots';
+export type CharacterHandGesture = 'relaxed' | 'open' | 'fist' | 'point' | 'peace';
+export type CharacterHand = 'left' | 'right';
 export interface CharacterIdentity { id: string; displayName: string; seed: number; signature: string; }
 export interface CharacterAccessorySpec { type: CharacterAccessory; color?: string; side?: 'left' | 'right' | 'both'; }
 export interface CharacterAppearance {
@@ -21,6 +23,7 @@ export interface ProceduralCharacterModel {
   root: THREE.Group; rig: ThreeRigRuntime;
   appearance: CharacterAppearance & { bodyScale: { x: number; y: number; z: number } };
   anchors: Map<CharacterAnchor, THREE.Group>;
+  handJoints: Map<CharacterHand, THREE.Group[]>;
   dispose(): void;
 }
 const DEFAULTS = { bodyColor:'#64748b', skinColor:'#c98f6b', hairColor:'#20202a', clothingColor:'#26364b', accentColor:'#38bdf8', eyeColor:'#171923', expression:'neutral' as CharacterExpression, headScale:1, style:'stylized' as const };
@@ -88,14 +91,15 @@ export function createProceduralCharacter(input:CharacterAppearance,rigDefinitio
   segment(ls,'left-upper-arm',new THREE.Vector3(-.28,-.28,0),.085,clothes); segment(rs,'right-upper-arm',new THREE.Vector3(.28,-.28,0),.085,clothes);
   segment(le,'left-forearm',new THREE.Vector3(-.05,-.27,0),.067,skin); segment(re,'right-forearm',new THREE.Vector3(.05,-.27,0),.067,skin);
   add(lw,new THREE.SphereGeometry(.075,12,10),skin,'left-hand',[0,0,0],[.8,1.1,.65]); add(rw,new THREE.SphereGeometry(.075,12,10),skin,'right-hand',[0,0,0],[.8,1.1,.65]);
-  for(const [wrist,sign] of [[lw,-1],[rw,1]] as const){for(let i=0;i<3;i++)segment(wrist,`finger-${i}`,new THREE.Vector3(sign*(i-1)*.025,-.085,.005),.012,skin);}
+  const handJoints=new Map<CharacterHand,THREE.Group[]>();
+  for(const [side,wrist,sign] of [['left',lw,-1],['right',rw,1]] as const){const fingers:THREE.Group[]=[];for(let i=0;i<4;i++){const finger=new THREE.Group();finger.name=`${side}-finger-${i}`;finger.position.set(sign*(i-1.5)*.026,-.035,.008);wrist.add(finger);segment(finger,`${side}-finger-mesh-${i}`,new THREE.Vector3(0,-.065,0),.011,skin);fingers.push(finger);}handJoints.set(side,fingers);}
   segment(lh,'left-thigh',new THREE.Vector3(0,-.42,0),.115,clothes); segment(rh,'right-thigh',new THREE.Vector3(0,-.42,0),.115,clothes);
   segment(lk,'left-shin',new THREE.Vector3(0,-.38,0),.078,body); segment(rk,'right-shin',new THREE.Vector3(0,-.38,0),.078,body);
   add(la,new THREE.BoxGeometry(.16,.09,.25),mat('#202733'),'left-shoe',[0,0,.07]); add(ra,new THREE.BoxGeometry(.16,.09,.25),mat('#202733'),'right-shoe',[0,0,.07]);
   const anchors=createAnchors(rig); buildAccessories(anchors,appearance.accessories);
   if(appearance.style==='low-poly') rig.root.traverse(o=>{const m=o as THREE.Mesh;if(m.isMesh){m.geometry=m.geometry.toNonIndexed();m.geometry.computeVertexNormals();const materials=Array.isArray(m.material)?m.material:[m.material];materials.forEach(x=>{if(x instanceof THREE.MeshStandardMaterial)x.flatShading=true;});}});
   rig.root.userData.vyroxxCharacter={id:appearance.id,identity:appearance.identity??createCharacterIdentity(appearance.id),appearance,rigId:definition.id};
-  return {root:rig.root,rig,appearance,anchors,dispose(){rig.root.traverse(o=>{const m=o as THREE.Mesh;if(m.isMesh){m.geometry.dispose();(Array.isArray(m.material)?m.material:[m.material]).forEach(x=>x.dispose());}});rig.root.removeFromParent();}};
+  return {root:rig.root,rig,appearance,anchors,handJoints,dispose(){rig.root.traverse(o=>{const m=o as THREE.Mesh;if(m.isMesh){m.geometry.dispose();(Array.isArray(m.material)?m.material:[m.material]).forEach(x=>x.dispose());}});rig.root.removeFromParent();}};
 }
 
 export function updateCharacterExpression(model:ProceduralCharacterModel,expression:CharacterExpression):void {
@@ -106,4 +110,28 @@ export function updateCharacterExpression(model:ProceduralCharacterModel,express
   head.children.filter(child=>names.test(child.name)).forEach(child=>{head.remove(child);const mesh=child as THREE.Mesh;if(mesh.isMesh){mesh.geometry.dispose();(Array.isArray(mesh.material)?mesh.material:[mesh.material]).forEach(m=>m.dispose());}});
   nextHead.children.filter(child=>names.test(child.name)).forEach(child=>{nextHead.remove(child);head.add(child);});
   replacement.dispose(); model.appearance.expression=expression;
+}
+
+
+/** Applies deterministic finger curl presets to the procedural hand joints. */
+export function setCharacterHandGesture(model:ProceduralCharacterModel,hand:CharacterHand,gesture:CharacterHandGesture):void {
+  const fingers=model.handJoints.get(hand); if(!fingers)return;
+  const curls:Record<CharacterHandGesture,number[]> = {
+    relaxed:[.12,.12,.12,.12], open:[0,0,0,0], fist:[1.15,1.25,1.25,1.1],
+    point:[1.15,0,1.15,1.1], peace:[1.15,0,0,1.1],
+  };
+  fingers.forEach((finger,index)=>{finger.rotation.x=curls[gesture][index]??0;});
+}
+
+/** Closes or opens the simple procedural eyelids for a blink. */
+export function setCharacterBlink(model:ProceduralCharacterModel,closed:boolean):void {
+  const head=model.rig.joints.get('head'); if(!head)return;
+  head.traverse(object=>{if(object.name==='eye-white'||object.name==='eye-pupil'){object.scale.y=closed?0.08:1;}});
+}
+
+/** Moves both pupils within a small bounded gaze range. */
+export function setCharacterGaze(model:ProceduralCharacterModel,x:number,y:number):void {
+  const head=model.rig.joints.get('head'); if(!head)return;
+  const gx=Math.max(-0.012,Math.min(0.012,x)), gy=Math.max(-0.012,Math.min(0.012,y));
+  head.traverse(object=>{if(object.name==='eye-pupil'){object.position.x=(object.position.x<0?-0.067:0.067)+gx;object.position.y=0.018+gy;}});
 }
