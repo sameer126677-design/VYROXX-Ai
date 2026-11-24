@@ -2,9 +2,23 @@ import type { Vec3 } from '../core/types';
 import type { CharacterRig, CharacterPose } from './rig';
 import { solveLimbIK3D, type LimbIK3DRequest } from './ik3d';
 
+export interface GroundObstacleSample {
+  height:number;
+  normal?:Vec3;
+  clearance?:number;
+}
 export interface GroundContactSurface {
   heightAt(x:number,z:number):number;
   normalAt?(x:number,z:number):Vec3;
+  obstacleAt?(x:number,z:number,radius:number):GroundObstacleSample|null;
+}
+export interface GroundContactConstraints {
+  maxSlopeRadians?:number;
+  maxStepHeight?:number;
+  soleClearance?:number;
+  footRadius?:number;
+  obstacleClearance?:number;
+  rejectSteepGround?:boolean;
 }
 export interface GroundContactOptions {
   surface?:GroundContactSurface;
@@ -18,6 +32,7 @@ export interface GroundContactOptions {
   footSeparation?:number;
   poleDistance?:number;
   frameOffset?:number;
+  constraints?:GroundContactConstraints;
 }
 export interface GroundFootContact {
   side:'left'|'right';
@@ -27,6 +42,10 @@ export interface GroundFootContact {
   target:Vec3;
   normal:Vec3;
   reachable:boolean;
+  slopeRadians:number;
+  slopeExceeded:boolean;
+  stepHeightExceeded:boolean;
+  obstacleBlocked:boolean;
 }
 export interface GroundContactPlan {
   frame:number;
@@ -64,15 +83,27 @@ export function evaluateGroundContactPlan(rig:CharacterRig,frame:number,fps:numb
     const localZ=(side==='left'?-1:1)*separation*0.5;
     const x=root.x+localX;
     const z=root.z+localZ-velocity.z*(planted?stanceElapsed:0);
-    const terrainY=options.surface?.heightAt(x,z)??0;
-    const y=terrainY+(planted?0:Math.sin(progress*Math.PI)*lift);
+    const rawTerrainY=options.surface?.heightAt(x,z)??0;
+    const constraints=options.constraints??{};
+    const terrainY=Math.max(rawTerrainY,root.y-(constraints.maxStepHeight??0.42));
     const normal=normalize(options.surface?.normalAt?.(x,z)??{x:0,y:1,z:0});
+    const slopeRadians=Math.acos(clamp(normal.y,-1,1));
+    const slopeExceeded=slopeRadians>Math.max(0,Math.min(Math.PI/2,constraints.maxSlopeRadians??0.78));
+    const stepHeightExceeded=rawTerrainY-root.y>(constraints.maxStepHeight??0.42);
+    const obstacle=options.surface?.obstacleAt?.(x,z,Math.max(0,constraints.footRadius??0.07))??null;
+    const soleClearance=Math.max(0,constraints.soleClearance??0.015);
+    const swingLift=planted?0:Math.sin(progress*Math.PI)*lift;
+    const obstacleTop=obstacle?obstacle.height+Math.max(0,obstacle.clearance??constraints.obstacleClearance??0.16):terrainY;
+    const obstacleBlocked=!!obstacle&&obstacleTop>terrainY+soleClearance+swingLift+0.001;
+    const y=Math.max(terrainY+soleClearance,obstacle?obstacleTop:terrainY+soleClearance)+swingLift;
     const hip=rig.joints.find(j=>j.id===side+'_hip');
     const knee=rig.joints.find(j=>j.id===side+'_knee');
     const ankle=rig.joints.find(j=>j.id===side+'_ankle');
     const reach=(knee?.length??0)+(ankle?.length??0);
-    const reachable=!!hip&&!!knee&&!!ankle&&Math.hypot(x-(root.x+(hip.bindPosition.x)),y-root.y,z-(root.z+hip.bindPosition.z))<=reach+0.05;
-    return{side,phase,planted,weight:planted?1:0.25,target:{x,y,z},normal,reachable};
+    const geometricallyReachable=!!hip&&!!knee&&!!ankle&&Math.hypot(x-(root.x+(hip.bindPosition.x)),y-root.y,z-(root.z+hip.bindPosition.z))<=reach+0.05;
+    const terrainAllowed=!(constraints.rejectSteepGround??true)||!slopeExceeded;
+    const reachable=geometricallyReachable&&terrainAllowed&&!stepHeightExceeded&&!obstacleBlocked;
+    return{side,phase,planted,weight:planted?1:0.25,target:{x,y,z},normal,reachable,slopeRadians,slopeExceeded,stepHeightExceeded,obstacleBlocked};
   };
   const contacts:[GroundFootContact,GroundFootContact]=[
     make('left',basePhase),
@@ -90,14 +121,14 @@ export function evaluateGroundContactPlan(rig:CharacterRig,frame:number,fps:numb
       pole:{x:contact.target.x,y:contact.target.y+poleDistance,z:contact.target.z+(side==='left'?-0.25:0.25)}
     } satisfies LimbIK3DRequest;
   }).filter((item):item is LimbIK3DRequest=>item!==null);
-  const supportPoints=contacts.filter(contact=>contact.planted).map(contact=>({x:contact.target.x,z:contact.target.z}));
+  const supportPoints=contacts.filter(contact=>contact.planted&&contact.reachable).map(contact=>({x:contact.target.x,z:contact.target.z}));
   return{frame,contacts,ikRequests,supportPoints};
 }
 
 /** Applies planned 3D foot targets on top of the supplied animated pose. */
 export function applyGroundContactPlan(rig:CharacterRig,pose:CharacterPose,plan:GroundContactPlan):CharacterPose {
   if(pose.rigId!==rig.id)throw new Error('Ground contact pose belongs to a different rig.');
-  return plan.ikRequests.reduce((current,request)=>solveLimbIK3D(rig,current,request).pose,pose);
+  return plan.ikRequests.filter(request=>plan.contacts.find(contact=>contact.side+'_hip'===request.rootJointId)?.reachable!==false).reduce((current,request)=>solveLimbIK3D(rig,current,request).pose,pose);
 }
 
 export interface FootPlantAnchor { position:Vec3; normal:Vec3; plantedAtFrame:number; }
@@ -150,6 +181,6 @@ export function updateFootPlantTracker(
     }
   }
   next.lastFrame=frame;
-  plan.supportPoints=plan.contacts.filter(contact=>contact.planted).map(contact=>({x:contact.target.x,z:contact.target.z}));
+  plan.supportPoints=plan.contacts.filter(contact=>contact.planted&&contact.reachable).map(contact=>({x:contact.target.x,z:contact.target.z}));
   return{plan,state:next};
 }
