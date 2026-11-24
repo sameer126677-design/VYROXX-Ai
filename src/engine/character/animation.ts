@@ -2,7 +2,7 @@ import type { Vec3 } from '../core/types';
 import type { CharacterPose, CharacterRig, JointPose } from './rig';
 import { validateCharacterRig } from './rig';
 
-export type MotionPreset = 'idle' | 'walk' | 'run' | 'sprint' | 'jump' | 'look-around';
+export type MotionPreset = 'idle' | 'walk' | 'run' | 'sprint' | 'jump' | 'look-around' | 'wave' | 'talk' | 'point' | 'celebrate' | 'crouch';
 export interface MotionClip {
   id: string;
   rigId: string;
@@ -48,6 +48,11 @@ export function sampleMotionClip(rig: CharacterRig, clip: MotionClip, frame: num
     case 'jump':
       joints = [pose('left_hip', -0.45), pose('right_hip', -0.45), pose('left_knee', 0.8), pose('right_knee', 0.8), pose('left_shoulder', -0.8), pose('right_shoulder', -0.8), pose('left_wrist', 0, 0, -0.12), pose('right_wrist', 0, 0, 0.12), pose('spine', 0, 0, bob)];
       break;
+    case 'wave': { const wave=Math.sin(phase*2.5); joints=[pose('right_shoulder',-0.9),pose('right_elbow',-0.95+Math.abs(wave)*0.35),pose('right_wrist',0,0,wave*0.55),pose('left_shoulder',0.12),pose('spine',0,0,Math.sin(phase)*0.025)]; break; }
+    case 'talk': { const beat=Math.sin(phase*3); joints=[pose('left_shoulder',-0.18+beat*0.12),pose('right_shoulder',-0.22-beat*0.16),pose('left_elbow',-0.35),pose('right_elbow',-0.42+Math.max(0,beat)*0.28),pose('left_wrist',0,0,beat*0.12),pose('right_wrist',0,0,-beat*0.18),pose('head',0,Math.sin(phase*1.5)*0.08),pose('spine',0,0,Math.sin(phase*3)*0.025)]; break; }
+    case 'point': joints=[pose('right_shoulder',-0.95),pose('right_elbow',-0.12),pose('right_wrist',0,0,-0.08),pose('left_shoulder',0.08),pose('head',0,-0.12)]; break;
+    case 'celebrate': { const pulse=Math.max(0,Math.sin(phase*2)); joints=[pose('left_shoulder',-1.25),pose('right_shoulder',-1.25),pose('left_elbow',-0.25),pose('right_elbow',0.25),pose('left_wrist',0,0,-0.18),pose('right_wrist',0,0,0.18),pose('left_hip',-pulse*0.12),pose('right_hip',pulse*0.12),pose('spine',0,0,pulse*0.08)]; break; }
+    case 'crouch': joints=[pose('left_hip',-0.75),pose('right_hip',-0.75),pose('left_knee',1.15),pose('right_knee',1.15),pose('spine',0,0,-0.12),pose('left_shoulder',-0.25),pose('right_shoulder',-0.25)]; break;
     case 'look-around':
       joints = [pose('head', 0, Math.sin(phase) * 0.5), pose('neck', 0, Math.sin(phase) * 0.18)];
       break;
@@ -63,7 +68,7 @@ export function createMotionClip(rig: CharacterRig, preset: MotionPreset, fps: n
     rigId: rig.id,
     preset,
     durationFrames: Math.max(1, Math.round(fps * durationSec)),
-    loop: options.loop ?? ['idle', 'walk', 'run', 'sprint'].includes(preset),
+    loop: options.loop ?? ['idle', 'walk', 'run', 'sprint', 'talk', 'wave', 'celebrate'].includes(preset),
     amplitude: options.amplitude ?? (preset === 'walk' ? 0.55 : preset === 'idle' ? 0.12 : 0.9),
     speed: options.speed ?? (preset === 'walk' ? 1.5 : preset === 'idle' ? 0.5 : 2.4),
   };
