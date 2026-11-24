@@ -9,25 +9,27 @@ import { setCharacterHandGesture } from './proceduralCharacter';
 import { applyFootIKToPose, evaluateFootContactPlan, type FootIKOptions } from './footIK';
 import { solveLimbIK3D, type LimbIK3DRequest } from './ik3d';
 import { solveFullBodyIK3D, type FullBodyIKOptions } from './fullBodyIK';
+import { solveCharacterBalance3D, type BalanceOptions } from './balance';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
-export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; }
+export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; }
 
-function applyRequestedIK(rig: CharacterRig, pose: CharacterPose, requests?: LimbIK3DRequest[], fullBodyIK?: FullBodyIKOptions): CharacterPose {
+function applyRequestedIK(rig: CharacterRig, pose: CharacterPose, requests?: LimbIK3DRequest[], fullBodyIK?: FullBodyIKOptions, balance?: BalanceOptions): CharacterPose {
   const withIndividual = (requests ?? []).reduce((current, request) => solveLimbIK3D(rig, current, request).pose, pose);
-  return fullBodyIK ? solveFullBodyIK3D(rig, withIndividual, fullBodyIK).pose : withIndividual;
+  const coordinated = fullBodyIK ? solveFullBodyIK3D(rig, withIndividual, fullBodyIK).pose : withIndividual;
+  return balance ? solveCharacterBalance3D(rig, coordinated, balance).pose : coordinated;
 }
 
 /** Builds a rig runtime and evaluates one deterministic animation frame. */
 export function evaluateThreeCharacterFrame(
   rig: CharacterRig, preset: MotionPreset, frame: number, fps: number,
-  options: ThreeRigOptions & { durationSec?: number; clip?: MotionClip; footIK?: FootIKOptions; ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions } = {}
+  options: ThreeRigOptions & { durationSec?: number; clip?: MotionClip; footIK?: FootIKOptions; ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions } = {}
 ): ThreeCharacterFrame {
   const runtime = createThreeRigRuntime(rig, options);
   const clip = options.clip ?? createMotionClip(rig, preset, fps, options.durationSec ?? 2);
   let pose = sampleMotionClip(rig, clip, frame, fps);
   if (options.footIK && ['walk', 'run', 'sprint'].includes(preset)) pose = applyFootIKToPose(rig, pose, evaluateFootContactPlan(rig, frame, fps, options.footIK), options.footIK);
-  pose = applyRequestedIK(rig, pose, options.ik3D, options.fullBodyIK);
+  pose = applyRequestedIK(rig, pose, options.ik3D, options.fullBodyIK, options.balance);
   updateThreeRigFromPose(runtime, rig, pose, options.unitScale ?? 1);
   return { runtime, pose, frame };
 }
@@ -46,7 +48,7 @@ export function updateThreeCharacterFrame(
 }
 
 export interface CharacterPerformance { motion: MotionPreset; expression?: CharacterExpression; expressionAtFrame?: number; }
-export function updateCharacterPerformance(model: ProceduralCharacterModel, rig: CharacterRig, performance: CharacterPerformance, frame: number, fps: number, options: { durationSec?: number; clip?: MotionClip; unitScale?: number } = {}): CharacterPose {
+export function updateCharacterPerformance(model: ProceduralCharacterModel, rig: CharacterRig, performance: CharacterPerformance, frame: number, fps: number, options: { durationSec?: number; clip?: MotionClip; unitScale?: number; footIK?: FootIKOptions; ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions } = {}): CharacterPose {
   const pose = updateThreeCharacterFrame(model.rig, rig, performance.motion, frame, fps, options);
   if (performance.expression && frame >= (performance.expressionAtFrame ?? 0) && model.appearance.expression !== performance.expression) updateCharacterExpression(model, performance.expression);
   return pose;
