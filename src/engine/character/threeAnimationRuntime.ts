@@ -27,6 +27,7 @@ import { applyCharacterPairForce, type CharacterPairForceState, type CharacterPa
 import { recoverCharacterBalance, type CharacterBalanceRecoveryState, type CharacterBalanceRecoveryOptions, type CharacterBalanceRecoveryResult } from './characterBalanceRecovery';
 import { applyCharacterRagdollImpulse, stepCharacterRagdoll, recoverCharacterFromRagdoll, type CharacterRagdollState, type CharacterRagdollOptions, type CharacterRagdollStep } from './characterRagdoll';
 import { createCharacterImpactState, sampleCharacterImpactReaction, type CharacterImpactRequest, type CharacterImpactState, type CharacterImpactSample } from './characterImpactReaction';
+import { createCharacterCombatState, startCharacterCombatMove, stepCharacterCombat, applyCharacterCombatDamage, recoverCharacterCombatStamina, type CharacterCombatState, type CombatCommand, type CombatMoveDefinition, type CombatTransition } from './characterCombat';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
 export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; dynamicBalance?: DynamicBalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions }; }
@@ -489,4 +490,50 @@ export function updateCharacterImpactReaction(
   const result = sampleCharacterImpactReaction(rig, basePose, state, frame);
   updateThreeRigFromPose(model.rig, rig, result.pose);
   return result;
+}
+
+
+/** Creates the gameplay combat state for one procedural character. */
+export function createThreeCharacterCombatState(
+  characterId: string,
+  frame = 0,
+  health = 100,
+  stamina = 100
+): CharacterCombatState {
+  return createCharacterCombatState(characterId, frame, health, stamina);
+}
+
+/** Starts an authored attack, block, dodge, stagger or counter move. */
+export function triggerThreeCharacterCombatMove(
+  previous: CharacterCombatState,
+  command: CombatCommand
+): CombatTransition {
+  return startCharacterCombatMove(previous, command);
+}
+
+/** Advances a combat move through its startup, active and recovery frames. */
+export function updateThreeCharacterCombat(
+  previous: CharacterCombatState,
+  move: CombatMoveDefinition,
+  frame: number
+): CombatTransition {
+  return stepCharacterCombat(previous, move, frame);
+}
+
+/** Applies externally confirmed damage and updates the character's combat state. */
+export function applyThreeCharacterCombatDamage(
+  previous: CharacterCombatState,
+  damage: number,
+  frame: number
+): CharacterCombatState {
+  return applyCharacterCombatDamage(previous, damage, frame);
+}
+
+/** Restores authored stamina between combat actions. */
+export function recoverThreeCharacterCombatStamina(
+  previous: CharacterCombatState,
+  amount: number,
+  frame: number
+): CharacterCombatState {
+  return recoverCharacterCombatStamina(previous, amount, frame);
 }
