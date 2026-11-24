@@ -63,6 +63,19 @@ export function buildThreeObjectFromBlueprint(blueprint: VisualBlueprint): THREE
     THREE.MathUtils.degToRad(blueprint.transform.rotation.z)
   );
   group.scale.set(blueprint.transform.scale.x, blueprint.transform.scale.y, blueprint.transform.scale.z);
+  group.visible = blueprint.visible ?? true;
+  const opacity = THREE.MathUtils.clamp(blueprint.opacity ?? 1, 0, 1);
+  group.traverse((child) => {
+    const renderable = child as THREE.Mesh | THREE.Points;
+    if (!('material' in renderable) || !renderable.material) return;
+    const materials = Array.isArray(renderable.material) ? renderable.material : [renderable.material];
+    materials.forEach((entry) => {
+      const transparentMaterial = entry as THREE.Material;
+      transparentMaterial.transparent = opacity < 1;
+      transparentMaterial.opacity = opacity;
+      transparentMaterial.depthWrite = opacity >= 1;
+    });
+  });
   return group;
 }
 export function buildThreeObjectForElement(element: SceneElement): THREE.Group {

@@ -12,6 +12,8 @@ export interface VisualBlueprint {
   detail: 'low' | 'medium' | 'high';
   layers: Array<{ id: string; role: string; primitive: ProceduralPrimitive; color: string; depth: number }>;
   source: 'procedural' | 'asset-required';
+  visible?: boolean;
+  opacity?: number;
 }
 const PRIMITIVE_BY_KIND: Partial<Record<SceneElement['kind'], ProceduralPrimitive>> = {
   skyline: 'composite', mountains: 'composite', trees: 'composite', clouds: 'composite',
@@ -59,6 +61,13 @@ function layersFor(element: SceneElement): VisualBlueprint['layers'] {
       return [add('primary-form', PRIMITIVE_BY_KIND[element.kind] ?? 'composite', base, 0), add('secondary-detail', 'composite', secondary, 0.06), add('accent-detail', 'sphere', accent, 0.12)];
   }
 }
+function elementTransform(element: SceneElement): EngineNode['transform'] {
+  return {
+    position: element.pos3d ?? { x: (element.x - 0.5) * 28, y: 0, z: (1 - element.depth) * -36 },
+    rotation: element.rot3d ?? { x: 0, y: 0, z: element.rotationDeg ?? 0 },
+    scale: { x: element.scale, y: element.scale, z: element.scale },
+  };
+}
 
 /** Converts planner elements into deterministic, renderer-neutral visual blueprints. */
 export function buildVisualBlueprint(element: SceneElement): VisualBlueprint {
@@ -69,16 +78,51 @@ export function buildVisualBlueprint(element: SceneElement): VisualBlueprint {
     primitive: PRIMITIVE_BY_KIND[element.kind] ?? 'composite',
     label: element.label,
     palette: [element.colorPrimary, element.colorSecondary, element.accentColor],
-    transform: {
-      position: element.pos3d ?? { x: (element.x - 0.5) * 28, y: 0, z: (1 - element.depth) * -36 },
-      rotation: element.rot3d ?? { x: 0, y: 0, z: element.rotationDeg ?? 0 },
-      scale: { x: element.scale, y: element.scale, z: element.scale },
-    },
+    transform: elementTransform(element),
     detail: element.kind === 'character' || element.kind === 'product' ? 'high' : 'medium',
     layers: layersFor(element),
     source: needsAsset ? 'asset-required' : 'procedural',
+    visible: true,
+    opacity: element.opacity ?? 1,
+  };
+}
+const NATIVE_PALETTE = ['#64748b', '#94a3b8', '#38bdf8'];
+function nativePrimitive(kind: EngineNode['kind']): ProceduralPrimitive {
+  if (kind === 'light') return 'sphere';
+  if (kind === 'audio' || kind === 'camera' || kind === 'group') return 'composite';
+  return PRIMITIVE_BY_KIND[kind as SceneElement['kind']] ?? 'composite';
+}
+/** Builds a renderer-neutral blueprint for nodes created directly by the native engine. */
+export function buildNativeNodeBlueprint(node: EngineNode): VisualBlueprint | null {
+  if (node.kind === 'group' || node.kind === 'camera' || node.kind === 'audio') return null;
+  const primitive = nativePrimitive(node.kind);
+  const palette = [...NATIVE_PALETTE];
+  const assetRequired = node.kind === 'external-asset' && node.assetRefs.length === 0;
+  return {
+    id: `visual-${node.id}`,
+    sourceNodeId: node.id,
+    primitive,
+    label: node.name,
+    palette,
+    transform: node.transform,
+    detail: node.kind === 'character' || node.kind === 'product' ? 'high' : 'medium',
+    layers: [{ id: `${node.id}-native-primary`, role: 'native-primary', primitive, color: palette[0], depth: 0 }],
+    source: assetRequired ? 'asset-required' : 'procedural',
+    visible: node.visible,
+    opacity: Math.max(0, Math.min(1, node.opacity)),
   };
 }
 export function buildSceneVisualBlueprints(scene: EngineScene): VisualBlueprint[] {
-  return scene.nodes.flatMap((node) => node.sourceElement ? [buildVisualBlueprint(node.sourceElement)] : []);
+  return scene.nodes.flatMap((node) => {
+    const blueprint = node.sourceElement
+      ? buildVisualBlueprint(node.sourceElement)
+      : buildNativeNodeBlueprint(node);
+    if (!blueprint) return [];
+    return [{
+      ...blueprint,
+      transform: node.transform,
+      visible: node.visible,
+      opacity: Math.max(0, Math.min(1, node.opacity)),
+    }];
+  });
 }
