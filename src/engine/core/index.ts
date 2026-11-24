@@ -11,6 +11,8 @@ export * from './compositor';
 export * from './evaluate';
 export * from '../character/rig';
 export * from '../character/animation';
+export * from '../character/cutoutRig';
 export * from '../cinematic/cameraDirector';
+export * from '../cinematic/threeCameraBridge';
 export * from '../visuals/proceduralBuilder';
 export * from '../visuals/threeBuilder';
