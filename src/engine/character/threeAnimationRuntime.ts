@@ -851,3 +851,29 @@ export function transitionThreeCharacterCombatAnimation(previous:CombatAnimation
 export function sampleThreeCharacterCombatAnimationTransition(previous:CombatAnimationTransitionState,frame:number):ReturnType<typeof sampleCombatAnimationTransition> {
   return sampleCombatAnimationTransition(previous,frame);
 }
+
+import { sampleCombatLocomotion, type CombatLocomotionSample } from './combatLocomotion';
+import { createCombatFootPlantState, updateCombatFootPlant, type CombatFootPlantState, type CombatFootPlantSample } from './combatFootPlanting';
+import { applyCombatRootMotion, type CombatRootMotionResult } from './combatRootMotion';
+import { solveCombatFootIK, type CombatFootIKRequest, type CombatFootIKResult } from './combatFootIK';
+
+/** Converts a combat movement command into a root-locomotion sample. */
+export function sampleThreeCharacterCombatLocomotion(movement:CombatMovementState|null,frame:number):CombatLocomotionSample {
+  return sampleCombatLocomotion(movement,frame);
+}
+/** Creates persistent left/right foot contact anchors for procedural grounding. */
+export function createThreeCharacterCombatFootPlantState(frame=0):CombatFootPlantState {
+  return createCombatFootPlantState(frame);
+}
+/** Updates planted-foot anchors from caller-provided contact and world-space foot positions. */
+export function updateThreeCharacterCombatFootPlant(previous:CombatFootPlantState,request:Parameters<typeof updateCombatFootPlant>[1]):CombatFootPlantSample {
+  return updateCombatFootPlant(previous,request);
+}
+/** Applies a sampled root displacement to character physics state; collision resolution remains a later physics step. */
+export function applyThreeCharacterCombatRootMotion(previous:CharacterPhysicsState,motion:CombatLocomotionSample,frame:number,weight=1):CombatRootMotionResult {
+  return applyCombatRootMotion(previous,motion,frame,weight);
+}
+/** Solves a two-bone 2D leg IK target for procedural foot placement. */
+export function solveThreeCharacterCombatFootIK(request:CombatFootIKRequest):CombatFootIKResult {
+  return solveCombatFootIK(request);
+}
