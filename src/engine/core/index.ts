@@ -22,3 +22,5 @@ export * from '../visuals/threeBuilder';
 export * from '../character/threeAnimationRuntime';
 export * from '../cinematic/lightingDirector';
 export * from '../cinematic/threeLightingBridge';
+export * from '../cinematic/environmentDirector';
+export * from '../visuals/threeEnvironmentBridge';

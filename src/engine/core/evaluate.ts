@@ -6,6 +6,7 @@ import { buildCompositePlan, evaluateCompositeFrame, type CompositeFrame, type C
 import { decideImageProviderUse } from './imageProviderPolicy';
 import { evaluateSceneHierarchy } from './nodeHierarchy';
 import { directSceneLighting } from '../cinematic/lightingDirector';
+import { directSceneEnvironment } from '../cinematic/environmentDirector';
 
 export interface EvaluatedFrame {
   frame: number;
@@ -15,6 +16,7 @@ export interface EvaluatedFrame {
   blueprints: ReturnType<typeof buildSceneVisualBlueprints>;
   camera: ReturnType<typeof sampleCameraTrack> | null;
   lighting: ReturnType<typeof directSceneLighting> | null;
+  environment: ReturnType<typeof directSceneEnvironment> | null;
   composite: CompositePlan;
   compositeFrame: CompositeFrame;
   imageProvider: ReturnType<typeof decideImageProviderUse>;
@@ -35,6 +37,7 @@ export function evaluateCreationFrame(document: CreationDocument, frame: number)
     blueprints: evaluatedScene ? buildSceneVisualBlueprints(evaluatedScene) : [],
     camera: cameraTrack ? sampleCameraTrack(cameraTrack, safeFrame) : null,
     lighting: scene ? directSceneLighting(scene) : null,
+    environment: scene ? directSceneEnvironment(scene) : null,
     composite,
     compositeFrame: evaluateCompositeFrame(composite, safeFrame),
     imageProvider: decideImageProviderUse(document),
