@@ -1067,3 +1067,26 @@ export function createThreeCharacterLocomotionEventState(rigId:string):Character
 export function detectThreeCharacterLocomotionSteps(rigId:string,state:LocomotionState,frame:number,previous:CharacterLocomotionEventState,minimumSpeed=0.12):CharacterLocomotionEventResult {
   return detectCharacterLocomotionSteps(rigId,state,frame,previous,minimumSpeed);
 }
+
+
+import { stepCharacterGroundedIK, type CharacterGroundedIKInput, type CharacterGroundedIKResult } from './characterGroundedIKPipeline';
+import { probeCharacterTerrain, type CharacterTerrainProbe, type CharacterTerrainProbeOptions } from './characterTerrainProbe';
+import { adaptCharacterFootTargets, type CharacterFootAdaptationResult, type CharacterFootAdaptationOptions } from './characterFootTargetAdaptation';
+import { calculateCharacterPelvisAdaptation, type CharacterPelvisAdaptation } from './characterPelvisAdaptation';
+
+/** Samples terrain height, surface normal, slope and optional obstacle clearance. */
+export function probeThreeCharacterTerrain(surface:Parameters<typeof probeCharacterTerrain>[0],x:number,z:number,options?:CharacterTerrainProbeOptions):CharacterTerrainProbe {
+  return probeCharacterTerrain(surface,x,z,options);
+}
+/** Adapts planned foot contacts to terrain slope, step height and obstacle constraints. */
+export function adaptThreeCharacterFootTargets(plan:Parameters<typeof adaptCharacterFootTargets>[0],surface:Parameters<typeof adaptCharacterFootTargets>[1],rootY:number,options?:CharacterFootAdaptationOptions):CharacterFootAdaptationResult {
+  return adaptCharacterFootTargets(plan,surface,rootY,options);
+}
+/** Calculates bounded pelvis compensation from accepted planted feet. */
+export function calculateThreeCharacterPelvisAdaptation(feet:CharacterFootAdaptationResult,rootPosition:Parameters<typeof calculateCharacterPelvisAdaptation>[1],maxOffset=0.22,response=1):CharacterPelvisAdaptation {
+  return calculateCharacterPelvisAdaptation(feet,rootPosition,maxOffset,response);
+}
+/** Runs persistent foot planting, terrain adaptation and multi-chain 3D IK in sequence. */
+export function stepThreeCharacterGroundedIK(input:CharacterGroundedIKInput):CharacterGroundedIKResult {
+  return stepCharacterGroundedIK(input);
+}
