@@ -24,6 +24,7 @@ import { applyCharacterPhysicsTransform, stepCharacterPhysics, type CharacterPhy
 import { applyDynamicBodyTransform, stepDynamicPhysics, type DynamicBodyDefinition, type DynamicBodyState, type DynamicPhysicsOptions, type DynamicPhysicsStep } from './dynamicObjectPhysics';
 import { applyCharacterObjectForce, type CharacterObjectForceState, type CharacterObjectForceRequest, type CharacterObjectForceResult } from './characterObjectForce';
 import { applyCharacterPairForce, type CharacterPairForceState, type CharacterPairForceRequest, type CharacterPairForceResult } from './characterPairForce';
+import { recoverCharacterBalance, type CharacterBalanceRecoveryState, type CharacterBalanceRecoveryOptions, type CharacterBalanceRecoveryResult } from './characterBalanceRecovery';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
 export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; dynamicBalance?: DynamicBalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions }; }
@@ -395,4 +396,24 @@ export function updateCharacterPairForce(
   interaction: CharacterPairInteractionResult
 ): CharacterPairForceResult {
   return applyCharacterPairForce(previous, firstPrevious, secondPrevious, request, interaction);
+}
+
+
+/** Applies predictive balance recovery to a procedural character and retains its updated physics velocity. */
+export function updateCharacterBalanceRecovery(
+  model: ProceduralCharacterModel,
+  rig: CharacterRig,
+  pose: CharacterPose,
+  physics: CharacterPhysicsState,
+  previous: CharacterBalanceRecoveryState,
+  frame: number,
+  fps: number,
+  options: CharacterBalanceRecoveryOptions
+): CharacterBalanceRecoveryResult {
+  if (model.appearance.id !== previous.characterId) {
+    throw new Error('Procedural character does not match the balance recovery state.');
+  }
+  const result = recoverCharacterBalance(rig, pose, physics, previous, frame, fps, options);
+  updateThreeRigFromPose(model.rig, rig, result.pose);
+  return result;
 }
