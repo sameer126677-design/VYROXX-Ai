@@ -1035,3 +1035,35 @@ export function stepThreeCharacterController(input:CharacterControllerPipelineIn
 export function updateThreeCharacterController(input:CharacterControllerPipelineInput):CharacterControllerPipelineResult {
   return updateCharacterController(input);
 }
+
+
+import { blendCharacterLocomotion, type CharacterLocomotionBlend } from './characterLocomotionBlend';
+import { applyCharacterLocomotionIntelligence, type CharacterLocomotionPoseResult } from './characterLocomotionPose';
+import { createCharacterTurnState, updateCharacterTurnInPlace, type CharacterTurnState, type CharacterTurnResult } from './characterTurnInPlace';
+import { createCharacterLocomotionEventState, detectCharacterLocomotionSteps, type CharacterLocomotionEventState, type CharacterLocomotionEventResult } from './characterLocomotionEvents';
+import type { LocomotionState } from './locomotion';
+
+/** Calculates continuous gait and directional weights from the evaluated locomotion state. */
+export function blendThreeCharacterLocomotion(state:LocomotionState,walkSpeed=1.35,runSpeed=3.4,sprintSpeed=5.8):CharacterLocomotionBlend {
+  return blendCharacterLocomotion(state,walkSpeed,runSpeed,sprintSpeed);
+}
+/** Applies acceleration lean and directional counter-rotation to an existing character pose. */
+export function applyThreeCharacterLocomotionIntelligence(rig:CharacterRig,pose:CharacterPose,state:LocomotionState):CharacterLocomotionPoseResult {
+  return applyCharacterLocomotionIntelligence(rig,pose,state);
+}
+/** Creates persistent state for smooth in-place character turning. */
+export function createThreeCharacterTurnState(heading=0,frame=0):CharacterTurnState {
+  return createCharacterTurnState(heading,frame);
+}
+/** Advances heading with a smooth turn response and applies torso/head counter-rotation. */
+export function updateThreeCharacterTurnInPlace(rig:CharacterRig,pose:CharacterPose,state:CharacterTurnState,targetHeading:number,frame:number,fps:number,response=8):CharacterTurnResult {
+  return updateCharacterTurnInPlace(rig,pose,state,targetHeading,frame,fps,response);
+}
+/** Creates per-rig footstep event tracking state. */
+export function createThreeCharacterLocomotionEventState(rigId:string):CharacterLocomotionEventState {
+  return createCharacterLocomotionEventState(rigId);
+}
+/** Detects left/right footstep events from sequential locomotion phase samples. */
+export function detectThreeCharacterLocomotionSteps(rigId:string,state:LocomotionState,frame:number,previous:CharacterLocomotionEventState,minimumSpeed=0.12):CharacterLocomotionEventResult {
+  return detectCharacterLocomotionSteps(rigId,state,frame,previous,minimumSpeed);
+}
