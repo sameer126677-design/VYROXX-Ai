@@ -17,6 +17,7 @@ import { evaluateCharacterInteraction, type CharacterInteractionRequest, type Ch
 import { transitionInteractionObject, type InteractionObjectState, type InteractionHand } from './objectInteraction';
 import type { Object3D } from 'three';
 import { evaluateCharacterPairInteraction, type CharacterPairInteractionRequest, type CharacterPairInteractionResult } from './pairInteraction';
+import { transitionCharacterObjectHandover, type CharacterObjectHandoverState, type CharacterObjectHandoverEvent } from './objectHandover';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
 export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; dynamicBalance?: DynamicBalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions }; }
@@ -247,4 +248,27 @@ export function updateCharacterPairInteraction(firstModel: ProceduralCharacterMo
   setCharacterHandGesture(firstModel, request.firstHand, result.first.gesture);
   setCharacterHandGesture(secondModel, request.secondHand, result.second.gesture);
   return result;
+}
+
+
+/** Runs a coordinated two-character handover and commits the scene-graph ownership change at the transfer phase. */
+export function updateCharacterObjectHandover(
+  sourceModel: ProceduralCharacterModel,
+  receiverModel: ProceduralCharacterModel,
+  object: Object3D,
+  request: CharacterPairInteractionRequest,
+  previous: CharacterObjectHandoverState,
+  event: CharacterObjectHandoverEvent
+): { interaction: CharacterPairInteractionResult; state: CharacterObjectHandoverState } {
+  if (request.action !== 'handover') throw new Error('Object handover requires a pair interaction with action "handover".');
+  if (sourceModel.appearance.id !== previous.sourceCharacterId || receiverModel.appearance.id !== previous.receiverCharacterId) {
+    throw new Error('Handover models do not match the source and receiver recorded in the handover state.');
+  }
+  const interaction = updateCharacterPairInteraction(sourceModel, receiverModel, request);
+  const state = transitionCharacterObjectHandover(previous, event);
+  if (event.type !== 'transfer') return { interaction, state };
+  const objectState = transferInteractionObjectState(sourceModel, receiverModel, object, previous.objectState, {
+    hand: previous.receiverHand, frame: event.frame
+  });
+  return { interaction, state: { ...state, objectState } };
 }
