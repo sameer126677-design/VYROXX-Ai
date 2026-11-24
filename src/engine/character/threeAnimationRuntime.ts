@@ -701,3 +701,29 @@ export function createThreeCharacterCombatEncounter(combat:CharacterCombatState,
 export function updateThreeCharacterCombatEncounter(previous:CombatEncounterState,combat:CharacterCombatState,guard:CombatGuardState,statuses:CombatStatusState,frame:number):CombatEncounterState {
   return updateCombatEncounter(previous,combat,guard,statuses,frame);
 }
+
+import { assessCombatThreat, type CombatThreatAssessment } from './combatThreatAssessment';
+import { planCombatTactics, type CombatTacticalPlan } from './combatTactics';
+import { createCombatAIControllerState, updateCombatAIController, type CombatAIControllerState } from './combatAIController';
+import { executeCombatAIChoice, type CombatAIExecutionRequest, type CombatAIExecutionResult } from './combatAIExecution';
+
+/** Assesses incoming hit contacts against a character's current combat state. */
+export function assessThreeCharacterCombatThreat(target:CharacterCombatState,contacts:CombatHitContact[],frame:number,lookAheadFrames=12):CombatThreatAssessment {
+  return assessCombatThreat(target,contacts,frame,lookAheadFrames);
+}
+/** Produces a tactical plan by combining the current combat context and incoming threat. */
+export function planThreeCharacterCombatTactics(context:CombatAIContext,threat:CombatThreatAssessment,moves:CombatMoveDefinition[],options?:Parameters<typeof planCombatTactics>[3]):CombatTacticalPlan {
+  return planCombatTactics(context,threat,moves,options);
+}
+/** Creates persistent decision-cadence state for an AI-controlled combatant. */
+export function createThreeCharacterCombatAIController(characterId:string,frame=0):CombatAIControllerState {
+  return createCombatAIControllerState(characterId,frame);
+}
+/** Advances AI decision cadence, retaining the previous decision between decision frames. */
+export function updateThreeCharacterCombatAIController(previous:CombatAIControllerState,plan:CombatTacticalPlan,frame:number,decisionIntervalFrames=6):CombatAIControllerState {
+  return updateCombatAIController(previous,plan,frame,decisionIntervalFrames);
+}
+/** Executes a tactical choice into combat, guard and/or movement state; caller applies movement to physics. */
+export function executeThreeCharacterCombatAI(choice:CombatAIChoice,combat:CharacterCombatState,guard:CombatGuardState,request:CombatAIExecutionRequest):CombatAIExecutionResult {
+  return executeCombatAIChoice(choice,combat,guard,request);
+}
