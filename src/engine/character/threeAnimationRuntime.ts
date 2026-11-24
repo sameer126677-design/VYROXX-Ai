@@ -870,8 +870,8 @@ export function updateThreeCharacterCombatFootPlant(previous:CombatFootPlantStat
   return updateCombatFootPlant(previous,request);
 }
 /** Applies a sampled root displacement to character physics state; collision resolution remains a later physics step. */
-export function applyThreeCharacterCombatRootMotion(previous:CharacterPhysicsState,motion:CombatLocomotionSample,frame:number,weight=1):CombatRootMotionResult {
-  return applyCombatRootMotion(previous,motion,frame,weight);
+export function applyThreeCharacterCombatRootMotion(previous:CharacterPhysicsState,motion:CombatLocomotionSample,frame:number,weight=1,previousAppliedDisplacement?:Vec3):CombatRootMotionResult {
+  return applyCombatRootMotion(previous,motion,frame,weight,previousAppliedDisplacement);
 }
 /** Solves a two-bone 2D leg IK target for procedural foot placement. */
 export function solveThreeCharacterCombatFootIK(request:CombatFootIKRequest):CombatFootIKResult {
