@@ -38,10 +38,6 @@ export function replaceThreeLightingRig(scene: THREE.Scene, plan: CinematicLight
   const previous = scene.getObjectByName('VYROXX_Cinematic_Lighting');
   if (previous) {
     scene.remove(previous);
-    previous.traverse((object) => {
-      const light = object as THREE.Light;
-      if (light.isLight) light.dispose?.();
-    });
   }
   const rig = createThreeLightingRig(plan);
   scene.add(rig);

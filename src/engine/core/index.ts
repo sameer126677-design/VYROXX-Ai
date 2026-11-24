@@ -20,3 +20,5 @@ export * from '../cinematic/threeCameraBridge';
 export * from '../visuals/proceduralBuilder';
 export * from '../visuals/threeBuilder';
 export * from '../character/threeAnimationRuntime';
+export * from '../cinematic/lightingDirector';
+export * from '../cinematic/threeLightingBridge';
