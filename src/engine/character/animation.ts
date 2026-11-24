@@ -40,12 +40,13 @@ export function sampleMotionClip(rig: CharacterRig, clip: MotionClip, frame: num
         pose('left_shoulder', -swing * factor * 0.7),
         pose('right_shoulder', swing * factor * 0.7),
         pose('left_elbow', -0.12 * factor), pose('right_elbow', -0.12 * factor),
+        pose('left_wrist', 0, 0, Math.sin(phase + Math.PI) * 0.08), pose('right_wrist', 0, 0, Math.sin(phase) * 0.08),
         pose('spine', 0, 0, bob),
       ];
       break;
     }
     case 'jump':
-      joints = [pose('left_hip', -0.45), pose('right_hip', -0.45), pose('left_knee', 0.8), pose('right_knee', 0.8), pose('left_shoulder', -0.8), pose('right_shoulder', -0.8), pose('spine', 0, 0, bob)];
+      joints = [pose('left_hip', -0.45), pose('right_hip', -0.45), pose('left_knee', 0.8), pose('right_knee', 0.8), pose('left_shoulder', -0.8), pose('right_shoulder', -0.8), pose('left_wrist', 0, 0, -0.12), pose('right_wrist', 0, 0, 0.12), pose('spine', 0, 0, bob)];
       break;
     case 'look-around':
       joints = [pose('head', 0, Math.sin(phase) * 0.5), pose('neck', 0, Math.sin(phase) * 0.18)];

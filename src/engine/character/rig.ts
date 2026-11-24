@@ -163,12 +163,16 @@ export function createHumanoidRig(characterId: string, rigId = `rig-${characterI
       joint('head', 'Head', 'neck', 0, 0.18, 0, 0.22),
       joint('left_shoulder', 'Left shoulder', 'spine', -0.28, 0.42, 0, 0.28),
       joint('left_elbow', 'Left elbow', 'left_shoulder', -0.28, -0.28, 0, 0.3),
+      joint('left_wrist', 'Left wrist', 'left_elbow', -0.05, -0.30, 0, 0.12),
       joint('right_shoulder', 'Right shoulder', 'spine', 0.28, 0.42, 0, 0.28),
       joint('right_elbow', 'Right elbow', 'right_shoulder', 0.28, -0.28, 0, 0.3),
+      joint('right_wrist', 'Right wrist', 'right_elbow', 0.05, -0.30, 0, 0.12),
       joint('left_hip', 'Left hip', 'root', -0.16, -0.08, 0, 0.42),
       joint('left_knee', 'Left knee', 'left_hip', 0, -0.42, 0, 0.42),
+      joint('left_ankle', 'Left ankle', 'left_knee', 0, -0.38, 0.07, 0.12),
       joint('right_hip', 'Right hip', 'root', 0.16, -0.08, 0, 0.42),
       joint('right_knee', 'Right knee', 'right_hip', 0, -0.42, 0, 0.42),
+      joint('right_ankle', 'Right ankle', 'right_knee', 0, -0.38, 0.07, 0.12),
     ],
   };
 }
