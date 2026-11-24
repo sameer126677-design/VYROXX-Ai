@@ -9,7 +9,7 @@ export interface CharacterPhysicsFeedbackResult { state:CharacterPhysicsFeedback
 export function stepCharacterPhysicsFeedback(input:CharacterPhysicsFeedbackInput):CharacterPhysicsFeedbackResult {
  const {rig,pose,physics,contacts,frame,state}=input;
  if(rig.characterId!==physics.characterId||rig.characterId!==state.characterId||pose.rigId!==rig.id||!Number.isFinite(frame)||frame<physics.changedAtFrame||(state.lastFrame!==null&&frame<state.lastFrame)) throw new Error('Physics feedback identity or frame is invalid.');
- const animation=evaluateCharacterPhysicsAnimationFeedback(rig,pose,physics,contacts,frame,input.animation);
+ const animation=evaluateCharacterPhysicsAnimationFeedback(rig,pose,physics,contacts,frame,{...input.animation,impactEnabled:frame>=state.impactCooldownUntil&&(input.animation?.impactEnabled??true)});
  let finalPose=animation.pose,stable:boolean|null=null,correction={x:0,z:0},balanceApplied=false;
  if(input.balance?.enabled&&input.supportPoints?.length){
   const report=solveDynamicCharacterBalance3D(rig,finalPose,{supportPoints:input.supportPoints,masses:input.masses,velocity:{x:physics.velocity.x,z:physics.velocity.z},acceleration:{x:0,z:0},margin:input.balance.margin,maxCorrection:input.balance.maxCorrection,predictionHorizonSec:input.balance.predictionHorizonSec,predictionWeight:input.balance.predictionWeight});
