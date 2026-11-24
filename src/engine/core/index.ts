@@ -25,3 +25,5 @@ export * from '../cinematic/threeLightingBridge';
 export * from '../cinematic/environmentDirector';
 export * from '../visuals/threeEnvironmentBridge';
 export * from '../character/proceduralCharacter';
+
+export * from '../character/lipSync';

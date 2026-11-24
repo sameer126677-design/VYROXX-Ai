@@ -1,6 +1,6 @@
 import type { CharacterRig, CharacterPose } from './rig';
 import type { CharacterExpression, ProceduralCharacterModel } from './proceduralCharacter';
-import { updateCharacterExpression, setCharacterBlink, setCharacterGaze } from './proceduralCharacter';
+import { updateCharacterExpression, setCharacterBlink, setCharacterGaze, setCharacterViseme } from './proceduralCharacter';
 import { createMotionClip, sampleMotionClip, type MotionPreset, type MotionClip } from './animation';
 import { createThreeRigRuntime, updateThreeRigFromPose, type ThreeRigOptions, type ThreeRigRuntime } from './threeRig';
 
@@ -63,4 +63,29 @@ export function updateCharacterFacialAnimation(model:ProceduralCharacterModel,fr
   const amplitude=Math.max(0,Math.min(0.012,options.gazeAmplitude??0.006));
   const phase=Math.max(0,frame)/safeFps;
   setCharacterGaze(model,Math.sin(phase*0.73)*amplitude,Math.sin(phase*0.41)*amplitude*0.55);
+}
+
+export interface LipSyncCue { frame: number; viseme: import('./proceduralCharacter').CharacterViseme; strength?: number; }
+export interface LipSyncTrack { cues: LipSyncCue[]; }
+
+/** Samples the nearest cue pair and interpolates mouth intensity deterministically. */
+export function sampleLipSync(track:LipSyncTrack,frame:number):{viseme:import('./proceduralCharacter').CharacterViseme;strength:number} {
+  const cues=[...track.cues].filter(c=>Number.isFinite(c.frame)).sort((a,b)=>a.frame-b.frame);
+  if(!cues.length)return {viseme:'rest',strength:1};
+  let previous=cues[0],next=cues[0];
+  for(const cue of cues){if(cue.frame<=frame)previous=cue;if(cue.frame>=frame){next=cue;break;}next=cue;}
+  if(previous===next)return {viseme:previous.viseme,strength:Math.max(0,Math.min(1,previous.strength??1))};
+  const span=Math.max(1,next.frame-previous.frame),t=Math.max(0,Math.min(1,(frame-previous.frame)/span));
+  return {viseme:t<0.5?previous.viseme:next.viseme,strength:Math.max(0,Math.min(1,(previous.strength??1)+((next.strength??1)-(previous.strength??1))*t))};
+}
+
+/** Applies a frame-sampled lip-sync track to an existing procedural character. */
+export function updateCharacterLipSync(model:ProceduralCharacterModel,track:LipSyncTrack,frame:number):void {
+  const sample=sampleLipSync(track,frame);
+  import('./proceduralCharacter').then(()=>undefined);
+  const mouth=model.rig.joints.get('head')?.getObjectByName('mouth') as import('three').Mesh | undefined;
+  if(!mouth)return;
+  const shapes:Record<import('./proceduralCharacter').CharacterViseme,[number,number,number]>={rest:[1,.4,.4],aa:[1.35,1.8,.7],ee:[1.55,.55,.45],oh:[.72,1.65,.8],fv:[1.25,.32,.35],mbp:[1.1,.12,.25]};
+  const target=shapes[sample.viseme],s=sample.strength;
+  mouth.scale.set(1+(target[0]-1)*s,.4+(target[1]-.4)*s,.4+(target[2]-.4)*s);
 }

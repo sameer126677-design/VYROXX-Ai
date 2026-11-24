@@ -135,3 +135,18 @@ export function setCharacterGaze(model:ProceduralCharacterModel,x:number,y:numbe
   const gx=Math.max(-0.012,Math.min(0.012,x)), gy=Math.max(-0.012,Math.min(0.012,y));
   head.traverse(object=>{if(object.name==='eye-pupil'){object.position.x=(object.position.x<0?-0.067:0.067)+gx;object.position.y=0.018+gy;}});
 }
+
+export type CharacterViseme = 'rest' | 'aa' | 'ee' | 'oh' | 'fv' | 'mbp';
+
+/** Applies a simple deterministic mouth shape to the procedural face. */
+export function setCharacterViseme(model:ProceduralCharacterModel,viseme:CharacterViseme,amount=1):void {
+  const head=model.rig.joints.get('head'); if(!head)return;
+  const mouth=head.getObjectByName('mouth') as THREE.Mesh | undefined; if(!mouth)return;
+  const intensity=Math.max(0,Math.min(1,amount));
+  const shapes:Record<CharacterViseme,{x:number;y:number;z:number}> = {
+    rest:{x:1,y:0.4,z:0.4}, aa:{x:1.35,y:1.8,z:0.7}, ee:{x:1.55,y:0.55,z:0.45},
+    oh:{x:0.72,y:1.65,z:0.8}, fv:{x:1.25,y:0.32,z:0.35}, mbp:{x:1.1,y:0.12,z:0.25},
+  };
+  const target=shapes[viseme];
+  mouth.scale.set(1+(target.x-1)*intensity,0.4+(target.y-0.4)*intensity,0.4+(target.z-0.4)*intensity);
+}
