@@ -7,82 +7,59 @@ import { sampleLipSync, type LipSyncTrack } from './lipSync';
 import { evaluateCharacterActionSequence, type CharacterActionSequence, type CharacterActionFrame } from './actionSequence';
 import { setCharacterHandGesture } from './proceduralCharacter';
 import { applyFootIKToPose, evaluateFootContactPlan, type FootIKOptions } from './footIK';
+import { solveLimbIK3D, type LimbIK3DRequest } from './ik3d';
 
-export interface ThreeCharacterFrame {
-  runtime: ThreeRigRuntime;
-  pose: CharacterPose;
-  frame: number;
+export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
+export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; }
+
+function applyRequestedIK(rig: CharacterRig, pose: CharacterPose, requests?: LimbIK3DRequest[]): CharacterPose {
+  return (requests ?? []).reduce((current, request) => solveLimbIK3D(rig, current, request).pose, pose);
 }
 
 /** Builds a rig runtime and evaluates one deterministic animation frame. */
 export function evaluateThreeCharacterFrame(
-  rig: CharacterRig,
-  preset: MotionPreset,
-  frame: number,
-  fps: number,
-  options: ThreeRigOptions & { durationSec?: number; clip?: MotionClip; footIK?: FootIKOptions } = {}
+  rig: CharacterRig, preset: MotionPreset, frame: number, fps: number,
+  options: ThreeRigOptions & { durationSec?: number; clip?: MotionClip; footIK?: FootIKOptions; ik3D?: LimbIK3DRequest[] } = {}
 ): ThreeCharacterFrame {
   const runtime = createThreeRigRuntime(rig, options);
   const clip = options.clip ?? createMotionClip(rig, preset, fps, options.durationSec ?? 2);
   let pose = sampleMotionClip(rig, clip, frame, fps);
-  if (options.footIK && ['walk', 'run', 'sprint'].includes(preset)) {
-    pose = applyFootIKToPose(rig, pose, evaluateFootContactPlan(rig, frame, fps, options.footIK), options.footIK);
-  }
+  if (options.footIK && ['walk', 'run', 'sprint'].includes(preset)) pose = applyFootIKToPose(rig, pose, evaluateFootContactPlan(rig, frame, fps, options.footIK), options.footIK);
+  pose = applyRequestedIK(rig, pose, options.ik3D);
   updateThreeRigFromPose(runtime, rig, pose, options.unitScale ?? 1);
   return { runtime, pose, frame };
 }
 
 /** Updates an existing runtime without rebuilding its Three.js hierarchy. */
 export function updateThreeCharacterFrame(
-  runtime: ThreeRigRuntime,
-  rig: CharacterRig,
-  preset: MotionPreset,
-  frame: number,
-  fps: number,
-  options: { durationSec?: number; clip?: MotionClip; unitScale?: number; footIK?: FootIKOptions } = {}
+  runtime: ThreeRigRuntime, rig: CharacterRig, preset: MotionPreset, frame: number, fps: number,
+  options: { durationSec?: number; clip?: MotionClip; unitScale?: number; footIK?: FootIKOptions; ik3D?: LimbIK3DRequest[] } = {}
 ): CharacterPose {
   const clip = options.clip ?? createMotionClip(rig, preset, fps, options.durationSec ?? 2);
   let pose = sampleMotionClip(rig, clip, frame, fps);
-  if (options.footIK && ['walk', 'run', 'sprint'].includes(preset)) {
-    pose = applyFootIKToPose(rig, pose, evaluateFootContactPlan(rig, frame, fps, options.footIK), options.footIK);
-  }
+  if (options.footIK && ['walk', 'run', 'sprint'].includes(preset)) pose = applyFootIKToPose(rig, pose, evaluateFootContactPlan(rig, frame, fps, options.footIK), options.footIK);
+  pose = applyRequestedIK(rig, pose, options.ik3D);
   updateThreeRigFromPose(runtime, rig, pose, options.unitScale ?? 1);
   return pose;
 }
 
-
 export interface CharacterPerformance { motion: MotionPreset; expression?: CharacterExpression; expressionAtFrame?: number; }
-
-/** Evaluates a reusable motion and applies its optional expression cue on an existing character. */
 export function updateCharacterPerformance(model: ProceduralCharacterModel, rig: CharacterRig, performance: CharacterPerformance, frame: number, fps: number, options: { durationSec?: number; clip?: MotionClip; unitScale?: number } = {}): CharacterPose {
   const pose = updateThreeCharacterFrame(model.rig, rig, performance.motion, frame, fps, options);
   if (performance.expression && frame >= (performance.expressionAtFrame ?? 0) && model.appearance.expression !== performance.expression) updateCharacterExpression(model, performance.expression);
   return pose;
 }
-
-
 export interface FacialAnimationOptions { blinkIntervalSec?: number; blinkDurationSec?: number; gazeAmplitude?: number; }
-
-/** Deterministic frame-based blink and subtle eye-gaze animation. */
 export function updateCharacterFacialAnimation(model:ProceduralCharacterModel,frame:number,fps:number,options:FacialAnimationOptions={}):void {
-  const safeFps=Math.max(1,fps);
-  const interval=Math.max(0.5,options.blinkIntervalSec??3.6)*safeFps;
-  const duration=Math.max(1,options.blinkDurationSec??0.12)*safeFps;
+  const safeFps=Math.max(1,fps), interval=Math.max(0.5,options.blinkIntervalSec??3.6)*safeFps, duration=Math.max(1,options.blinkDurationSec??0.12)*safeFps;
   const cycle=((Math.max(0,frame)%interval)+interval)%interval;
   setCharacterBlink(model,cycle<duration);
-  const amplitude=Math.max(0,Math.min(0.012,options.gazeAmplitude??0.006));
-  const phase=Math.max(0,frame)/safeFps;
+  const amplitude=Math.max(0,Math.min(0.012,options.gazeAmplitude??0.006)), phase=Math.max(0,frame)/safeFps;
   setCharacterGaze(model,Math.sin(phase*0.73)*amplitude,Math.sin(phase*0.41)*amplitude*0.55);
 }
-
-
-/** Evaluates the voice viseme track at the requested frame and updates the face. */
 export function updateCharacterLipSync(model:ProceduralCharacterModel,track:LipSyncTrack,frame:number):void {
   const sample=sampleLipSync(track,frame); setCharacterViseme(model,sample.viseme,sample.strength);
 }
-
-
-/** Evaluates a complete action timeline and applies its body and facial performance. */
 export function updateCharacterActionSequence(model:ProceduralCharacterModel,rig:CharacterRig,sequence:CharacterActionSequence,frame:number,fps:number):CharacterActionFrame {
   const result=evaluateCharacterActionSequence(rig,sequence,frame,fps);
   updateThreeRigFromPose(model.rig,rig,result.pose);
