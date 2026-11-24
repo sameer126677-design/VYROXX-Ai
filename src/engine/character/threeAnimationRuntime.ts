@@ -14,6 +14,8 @@ import { evaluateGroundContactPlan, applyGroundContactPlan, createFootPlantState
 import { evaluateLocomotionState, applyLocomotionPose, updateLocomotionController, createLocomotionControllerState, type LocomotionInput, type LocomotionOptions, type LocomotionControllerState } from './locomotion';
 import { createFootstepEventState, detectFootstepEvents, type FootstepEvent, type FootstepEventState } from './locomotionEvents';
 import { evaluateCharacterInteraction, type CharacterInteractionRequest, type CharacterInteractionResult } from './interaction';
+import { transitionInteractionObject, type InteractionObjectState, type InteractionHand } from './objectInteraction';
+import type { Object3D } from 'three';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
 export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; dynamicBalance?: DynamicBalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions }; }
@@ -181,4 +183,38 @@ export function updateCharacterInteraction(model: ProceduralCharacterModel, rig:
   updateThreeRigFromPose(model.rig, rig, result.pose);
   setCharacterHandGesture(model, request.hand, result.gesture);
   return result;
+}
+
+
+/** Parents a scene object to the selected wrist anchor while preserving world transform. */
+export function attachInteractionObject(model: ProceduralCharacterModel, object: Object3D, hand: InteractionHand): void {
+  const anchor = model.anchors.get(hand === 'left' ? 'left-wrist' : 'right-wrist');
+  if (!anchor) throw new Error(`Missing ${hand} wrist anchor.`);
+  model.root.updateMatrixWorld(true);
+  object.updateWorldMatrix(true, false);
+  anchor.attach(object);
+  model.root.updateMatrixWorld(true);
+}
+
+/** Releases an attached object into the character's scene parent, preserving its world transform. */
+export function detachInteractionObject(model: ProceduralCharacterModel, object: Object3D): void {
+  const destination = model.root.parent ?? model.root;
+  destination.updateWorldMatrix(true, false);
+  object.updateWorldMatrix(true, false);
+  destination.attach(object);
+  destination.updateMatrixWorld(true);
+}
+
+/** Updates serializable ownership state and performs the matching scene attachment operation. */
+export function updateInteractionObjectState(
+  model: ProceduralCharacterModel,
+  object: Object3D,
+  previous: InteractionObjectState,
+  command: { type: 'grab'; hand: InteractionHand; frame: number } | { type: 'release'; frame: number }
+): InteractionObjectState {
+  const next = transitionInteractionObject(previous, command);
+  if (next === previous) return previous;
+  if (command.type === 'grab') attachInteractionObject(model, object, command.hand);
+  else if (previous.status === 'held') detachInteractionObject(model, object);
+  return next;
 }
