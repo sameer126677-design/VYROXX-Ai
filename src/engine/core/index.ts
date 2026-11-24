@@ -29,3 +29,5 @@ export * from '../character/proceduralCharacter';
 export * from '../character/lipSync';
 
 export * from '../character/actionSequence';
+
+export * from '../character/footIK';
