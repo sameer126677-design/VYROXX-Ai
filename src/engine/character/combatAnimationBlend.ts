@@ -4,7 +4,6 @@ export interface CombatAnimationBlendOptions { weight:number; fadeInFrames?:numb
 export function blendCombatAnimationPose(rig:CharacterRig,basePose:CharacterPose,request:CombatAnimationRequest,frame:number,options:CombatAnimationBlendOptions):CharacterPose{
  if(!Number.isFinite(options.weight)||options.weight<0||options.weight>1||!Number.isInteger(options.fadeInFrames??0)||(options.fadeInFrames??0)<0||!Number.isInteger(options.fadeOutFrames??0)||(options.fadeOutFrames??0)<0)throw new Error('Invalid combat animation blend options.');
  const sampled=sampleCombatAnimation(rig,basePose,request,frame);
- const t=Math.max(0,Math.min(1,(frame-request.startFrame)/request.durationFrames));
  const fadeIn=options.fadeInFrames?Math.min(1,(frame-request.startFrame)/options.fadeInFrames):1;
  const fadeOut=options.fadeOutFrames?Math.min(1,(request.startFrame+request.durationFrames-frame)/options.fadeOutFrames):1;
  const weight=options.weight*Math.min(fadeIn,fadeOut);
