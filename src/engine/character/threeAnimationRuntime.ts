@@ -999,3 +999,21 @@ export function blendThreeCharacterCombatRagdollPoses(rig:CharacterRig,animatedP
 export function driveThreeCharacterCombatRagdollAnimation(rig:CharacterRig,animatedPose:CharacterPose,ragdoll:CharacterRagdollState,animation:CombatRagdollAnimationState,frame:number,fps:number,grounded:boolean,options?:CombatRagdollAnimationRuntimeOptions):CombatRagdollAnimationDriverResult {
   return updateCombatRagdollAnimationRuntime(rig,animatedPose,ragdoll,animation,frame,fps,grounded,options);
 }
+
+
+import { createCharacterAnimationPipelineState, type CharacterAnimationPipelineState } from './characterAnimationPipelineState';
+import { evaluateCharacterAnimationPipeline, type CharacterAnimationPipelineInput, type CharacterAnimationPipelineResult } from './characterAnimationPipeline';
+import { updateCharacterAnimationPipeline } from './characterAnimationPipelineRuntime';
+
+/** Creates persistent frame/identity state for the unified character animation pipeline. */
+export function createThreeCharacterAnimationPipelineState(rig:CharacterRig,frame=0):CharacterAnimationPipelineState {
+  return createCharacterAnimationPipelineState(rig,frame);
+}
+/** Evaluates locomotion, combat overlay, physics reaction and optional ragdoll in a fixed order. */
+export function evaluateThreeCharacterAnimationPipeline(input:CharacterAnimationPipelineInput):CharacterAnimationPipelineResult {
+  return evaluateCharacterAnimationPipeline(input);
+}
+/** Advances the unified character animation pipeline and returns the next caller-owned state. */
+export function updateThreeCharacterAnimationPipeline(input:CharacterAnimationPipelineInput):CharacterAnimationPipelineResult {
+  return updateCharacterAnimationPipeline(input);
+}
