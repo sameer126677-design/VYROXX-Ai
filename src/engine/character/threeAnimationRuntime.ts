@@ -727,3 +727,25 @@ export function updateThreeCharacterCombatAIController(previous:CombatAIControll
 export function executeThreeCharacterCombatAI(choice:CombatAIChoice,combat:CharacterCombatState,guard:CombatGuardState,request:CombatAIExecutionRequest):CombatAIExecutionResult {
   return executeCombatAIChoice(choice,combat,guard,request);
 }
+
+import { assignCombatSquadRoles, type CombatSquadMember, type CombatSquadRoleAssignment } from './combatSquadRoles';
+import { selectCombatSquadTarget, type SquadTargetRequest, type SquadTargetResult } from './combatSquadTargeting';
+import { coordinateCombatSquad, type CombatSquadOrder } from './combatSquadCoordination';
+import { createCombatSquadExecutionOrders, type CombatSquadExecutionRequest, type CombatSquadExecutionResult } from './combatSquadExecution';
+
+/** Assigns deterministic engage, flank, support, reserve and retreat roles to squad members. */
+export function assignThreeCharacterCombatSquadRoles(members:CombatSquadMember[],leaderId:string,retreatHealthRatio=0.2):CombatSquadRoleAssignment[] {
+  return assignCombatSquadRoles(members,leaderId,retreatHealthRatio);
+}
+/** Selects a target and reports how many allies are already assigned to it. */
+export function selectThreeCharacterCombatSquadTarget(request:SquadTargetRequest):SquadTargetResult {
+  return selectCombatSquadTarget(request);
+}
+/** Converts squad roles and target information into prioritized coordinated orders. */
+export function coordinateThreeCharacterCombatSquad(assignments:CombatSquadRoleAssignment[],target:SquadTargetResult,focusLimit=2):CombatSquadOrder[] {
+  return coordinateCombatSquad(assignments,target,focusLimit);
+}
+/** Creates movement orders for flank and retreat roles; caller applies movement and other actions. */
+export function executeThreeCharacterCombatSquadOrders(orders:CombatSquadOrder[],request:CombatSquadExecutionRequest):CombatSquadExecutionResult[] {
+  return createCombatSquadExecutionOrders(orders,request);
+}
