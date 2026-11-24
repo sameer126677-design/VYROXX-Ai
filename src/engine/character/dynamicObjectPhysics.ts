@@ -136,7 +136,7 @@ export function stepDynamicPhysics(
   if(stateMap.size!==previous.length||previous.length!==definitions.length)throw new Error('Every dynamic body needs exactly one matching state.');
   for(const def of definitions)if(!stateMap.has(def.id))throw new Error(`Missing dynamic body state: ${def.id}`);
   for(const state of previous)if(!definitionMap.has(state.id)||!finiteVec(state.position)||!finiteVec(state.velocity)||!finiteVec(state.force)||frame<state.changedAtFrame)throw new Error('Dynamic body state is invalid or belongs to another frame.');
-  const delta=(frame-previous[0]?.changedAtFrame??0)/fps;
+  const startFrame=previous[0]?.changedAtFrame??frame;\n  if(previous.some(state=>state.changedAtFrame!==startFrame))throw new Error('All dynamic body states must share the same starting frame.');\n  const delta=(frame-startFrame)/fps;
   const maxStep=clamp(options.maxSubstepSec??1/60,1/240,1/15),steps=Math.max(1,Math.ceil(delta/maxStep)),dt=delta/steps;
   const gravity=options.gravity??{x:0,y:-9.81,z:0};
   if(!finiteVec(gravity))throw new Error('Gravity vector must be finite.');
@@ -177,7 +177,7 @@ export function stepDynamicPhysics(
   const states=definitions.map(def=>{
     const state=current.get(def.id)!;
     const speed=length(state.velocity);
-    if(!def.isStatic&&speed<sleepSpeed&&Math.abs(state.position.y-bodyAabb(def,state).min.y)<EPS){state.velocity={x:0,y:0,z:0};state.sleeping=true;}
+    if(!def.isStatic&&speed<sleepSpeed&&bodyAabb(def,state).min.y<=ground+0.002){state.velocity={x:0,y:0,z:0};state.sleeping=true;}
     state.changedAtFrame=frame;return state;
   });
   return{states,contacts,frame};
