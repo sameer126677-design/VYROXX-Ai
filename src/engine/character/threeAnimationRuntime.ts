@@ -23,6 +23,7 @@ import { applySharedPayloadTransform, evaluatePhysicalCoordination, type Physica
 import { applyCharacterPhysicsTransform, stepCharacterPhysics, type CharacterPhysicsState, type CharacterCapsule, type EnvironmentCollider, type CharacterPhysicsOptions, type CharacterPhysicsStep } from './collisionPhysics';
 import { applyDynamicBodyTransform, stepDynamicPhysics, type DynamicBodyDefinition, type DynamicBodyState, type DynamicPhysicsOptions, type DynamicPhysicsStep } from './dynamicObjectPhysics';
 import { applyCharacterObjectForce, type CharacterObjectForceState, type CharacterObjectForceRequest, type CharacterObjectForceResult } from './characterObjectForce';
+import { applyCharacterPairForce, type CharacterPairForceState, type CharacterPairForceRequest, type CharacterPairForceResult } from './characterPairForce';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
 export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; dynamicBalance?: DynamicBalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions }; }
@@ -382,4 +383,16 @@ export function updateCharacterObjectForce(
   interaction: CharacterInteractionResult
 ): CharacterObjectForceResult {
   return applyCharacterObjectForce(definition, bodyState, previous, request, interaction);
+}
+
+
+/** Bridges a confirmed two-character hand interaction into both character physics velocities. */
+export function updateCharacterPairForce(
+  previous: CharacterPairForceState,
+  firstPrevious: CharacterPhysicsState,
+  secondPrevious: CharacterPhysicsState,
+  request: CharacterPairForceRequest,
+  interaction: CharacterPairInteractionResult
+): CharacterPairForceResult {
+  return applyCharacterPairForce(previous, firstPrevious, secondPrevious, request, interaction);
 }
