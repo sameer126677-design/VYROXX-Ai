@@ -83,8 +83,10 @@ export function sampleMotionClip(rig: CharacterRig, clip: MotionClip, frame: num
     setJoint('left_knee',byId.get('left_knee')?.rotation.x??0,0,0);
     setJoint('right_knee',byId.get('right_knee')?.rotation.x??0,0,0);
     const leftAnkle=byId.get('left_ankle'),rightAnkle=byId.get('right_ankle');
-    if(leftAnkle) leftAnkle.position={x:0,y:contactLift(leftPhase),z:0};
-    if(rightAnkle) rightAnkle.position={x:0,y:contactLift(rightPhase),z:0};
+    const leftBind=rig.joints.find(item=>item.id==='left_ankle')?.bindPosition;
+    const rightBind=rig.joints.find(item=>item.id==='right_ankle')?.bindPosition;
+    if(leftAnkle&&leftBind) leftAnkle.position={x:leftBind.x,y:leftBind.y+contactLift(leftPhase),z:leftBind.z};
+    if(rightAnkle&&rightBind) rightAnkle.position={x:rightBind.x,y:rightBind.y+contactLift(rightPhase),z:rightBind.z};
   }
   return { rigId: rig.id, frame, joints };
 }
