@@ -11,9 +11,11 @@ import {
   Eye,
   FolderPlus,
   Loader2,
+  ScanLine,
 } from 'lucide-react';
 import { AssetCategory, AssetRecord } from '../types';
 import { AuthenticatedAssetThumbnail } from './AnimationCanvas';
+import { CharacterRigStudio } from './CharacterRigStudio';
 
 interface AssetsViewProps {
   assets: AssetRecord[];
@@ -57,6 +59,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [rigAsset, setRigAsset] = useState<AssetRecord | null>(null);
 
   const filteredAssets = useMemo(() => {
     return assets
@@ -233,6 +236,19 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                               <Pencil className="w-3.5 h-3.5 text-slate-300" />
                               <span>Rename</span>
                             </button>
+                            {(asset.mimeType.startsWith('image/') || asset.category === 'Characters' || asset.category === 'Images') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveMenuId(null);
+                                  setRigAsset(asset);
+                                }}
+                                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-cyan-100 hover:bg-cyan-500/20 hover:text-white cursor-pointer"
+                              >
+                                <ScanLine className="w-3.5 h-3.5 text-cyan-300" />
+                                <span>Rig Character</span>
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => {
@@ -289,6 +305,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
           )}
         </div>
       </div>
+      {rigAsset && <CharacterRigStudio asset={rigAsset} onClose={() => setRigAsset(null)} />}
     </div>
   );
 };
