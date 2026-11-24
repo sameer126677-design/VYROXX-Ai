@@ -13,6 +13,7 @@ import { solveCharacterBalance3D, solveDynamicCharacterBalance3D, type BalanceOp
 import { evaluateGroundContactPlan, applyGroundContactPlan, createFootPlantState, updateFootPlantTracker, type FootPlantState, type GroundContactPlan, type GroundContactOptions } from './groundContact';
 import { evaluateLocomotionState, applyLocomotionPose, updateLocomotionController, createLocomotionControllerState, type LocomotionInput, type LocomotionOptions, type LocomotionControllerState } from './locomotion';
 import { createFootstepEventState, detectFootstepEvents, type FootstepEvent, type FootstepEventState } from './locomotionEvents';
+import { evaluateCharacterInteraction, type CharacterInteractionRequest, type CharacterInteractionResult } from './interaction';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
 export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; dynamicBalance?: DynamicBalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions }; }
@@ -170,5 +171,14 @@ export function updateCharacterActionSequence(model:ProceduralCharacterModel,rig
   if(result.rightHand)setCharacterHandGesture(model,'right',result.rightHand);
   if(result.gaze)setCharacterGaze(model,result.gaze.x,result.gaze.y);
   if(result.viseme)setCharacterViseme(model,result.viseme);
+  return result;
+}
+
+
+/** Applies a targeted reach/grab/push/pull pose to the procedural character runtime. */
+export function updateCharacterInteraction(model: ProceduralCharacterModel, rig: CharacterRig, pose: CharacterPose, request: CharacterInteractionRequest): CharacterInteractionResult {
+  const result = evaluateCharacterInteraction(rig, pose, request);
+  updateThreeRigFromPose(model.rig, rig, result.pose);
+  setCharacterHandGesture(model, request.hand, result.gesture);
   return result;
 }
