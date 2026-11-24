@@ -643,9 +643,9 @@ export function readThreeCharacterCombatEvents(ledger:CombatEventLedger,fromFram
   return readCombatEvents(ledger,fromFrame,toFrame);
 }
 
-import { createCombatMovementState, sampleCombatMovement, type CombatMovementRequest, type CombatMovementState, type CombatMovementSample } from './combatMovement';
+import { createCombatMovementState, sampleCombatMovement, type CombatMovementRequest, type CombatMovementState, type CombatMovementSample, type CombatMovementAction } from './combatMovement';
 import { evaluateCombatSpacing, type CombatSpacingOptions, type CombatSpacingResult } from './combatSpacing';
-import { sampleCombatAnimation, type CombatAnimationRequest } from './combatAnimation';
+import { sampleCombatAnimation, type CombatAnimationRequest, type CombatAnimationAction } from './combatAnimation';
 import { sampleCombatMoveTimeline, type CombatMoveTimelineSample } from './combatMoveTimeline';
 
 /** Starts a caller-owned tactical movement command such as dodge, strafe or retreat. */
