@@ -1017,3 +1017,21 @@ export function evaluateThreeCharacterAnimationPipeline(input:CharacterAnimation
 export function updateThreeCharacterAnimationPipeline(input:CharacterAnimationPipelineInput):CharacterAnimationPipelineResult {
   return updateCharacterAnimationPipeline(input);
 }
+
+
+import { createCharacterControllerState, type CharacterControllerState } from './characterControllerState';
+import { stepCharacterControllerPipeline, type CharacterControllerPipelineInput, type CharacterControllerPipelineResult } from './characterControllerPipeline';
+import { updateCharacterController } from './characterControllerRuntime';
+
+/** Creates a persistent controller state from initialized physics, animation and foot-plant states. */
+export function createThreeCharacterControllerState(physics:CharacterPhysicsState,animation:CharacterAnimationPipelineState,feet:CombatFootPlantState):CharacterControllerState {
+  return createCharacterControllerState(physics,animation,feet);
+}
+/** Steps player input, movement physics, foot support and the unified animation pipeline together. */
+export function stepThreeCharacterController(input:CharacterControllerPipelineInput):CharacterControllerPipelineResult {
+  return stepCharacterControllerPipeline(input);
+}
+/** Runtime update alias for the synchronized character controller. */
+export function updateThreeCharacterController(input:CharacterControllerPipelineInput):CharacterControllerPipelineResult {
+  return updateCharacterController(input);
+}
