@@ -75,6 +75,7 @@ export function evaluateRigWorldPose3D(rig: CharacterRig, pose: CharacterPose): 
   const validation = validateCharacterRig(rig);
   if (!validation.valid) throw new Error(`Invalid character rig: ${validation.errors.join(' ')}`);
   const rotations = applyCharacterPose(rig, pose);
+  const poseById = new Map(pose.joints.map(item => [item.jointId, item]));
   const byId = new Map(rig.joints.map(joint => [joint.id, joint]));
   const output = new Map<string, WorldJointTransform3D>();
   const visiting = new Set<string>();
@@ -86,12 +87,13 @@ export function evaluateRigWorldPose3D(rig: CharacterRig, pose: CharacterPose): 
     if (!joint) throw new Error(`Missing rig joint: ${jointId}`);
     visiting.add(jointId);
     const localQuaternion = quaternionFromEulerXYZ(rotations.get(jointId) ?? joint.bindRotation);
+    const localPosition = poseById.get(jointId)?.position ?? joint.bindPosition;
     let result: WorldJointTransform3D;
     if (!joint.parentId) {
-      result = { jointId, position: { ...joint.bindPosition }, rotation: quaternionToEulerXYZ(localQuaternion), quaternion: localQuaternion };
+      result = { jointId, position: { ...localPosition }, rotation: quaternionToEulerXYZ(localQuaternion), quaternion: localQuaternion };
     } else {
       const parent = visit(joint.parentId);
-      const offset = quaternionRotateVector(parent.quaternion, joint.bindPosition);
+      const offset = quaternionRotateVector(parent.quaternion, localPosition);
       const worldQuaternion = quaternionMultiply(parent.quaternion, localQuaternion);
       result = { jointId, position: add(parent.position, offset), rotation: quaternionToEulerXYZ(worldQuaternion), quaternion: worldQuaternion };
     }
