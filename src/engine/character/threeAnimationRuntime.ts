@@ -1113,3 +1113,26 @@ export function applyThreeCharacterBalancePosture(rig:CharacterRig,pose:Characte
 export function stepThreeCharacterBalancePipeline(input:CharacterBalancePipelineInput):CharacterBalancePipelineResult {
   return stepCharacterBalancePipeline(input);
 }
+
+
+import { createCharacterPhysicsFeedbackState, type CharacterPhysicsFeedbackState } from './characterPhysicsFeedbackState';
+import { analyzeCharacterPhysicsContacts, type CharacterPhysicsContactAnalysis } from './characterPhysicsContactAnalysis';
+import { evaluateCharacterPhysicsAnimationFeedback, type CharacterPhysicsAnimationFeedbackOptions, type CharacterPhysicsAnimationFeedbackResult } from './characterPhysicsAnimationFeedback';
+import { stepCharacterPhysicsFeedback, type CharacterPhysicsFeedbackInput, type CharacterPhysicsFeedbackResult } from './characterPhysicsFeedbackPipeline';
+
+/** Creates per-character state for collision-to-animation feedback and impact cooldown. */
+export function createThreeCharacterPhysicsFeedbackState(characterId:string,frame=0):CharacterPhysicsFeedbackState {
+  return createCharacterPhysicsFeedbackState(characterId,frame);
+}
+/** Classifies physics contacts by direction, penetration and severity. */
+export function analyzeThreeCharacterPhysicsContacts(physics:Parameters<typeof analyzeCharacterPhysicsContacts>[0],contacts:Parameters<typeof analyzeCharacterPhysicsContacts>[1]):CharacterPhysicsContactAnalysis {
+  return analyzeCharacterPhysicsContacts(physics,contacts);
+}
+/** Converts physics velocity and contacts into a procedural animation pose and impact reaction. */
+export function evaluateThreeCharacterPhysicsAnimationFeedback(rig:CharacterRig,pose:CharacterPose,physics:Parameters<typeof evaluateCharacterPhysicsAnimationFeedback>[2],contacts:Parameters<typeof evaluateCharacterPhysicsAnimationFeedback>[3],frame:number,options?:CharacterPhysicsAnimationFeedbackOptions):CharacterPhysicsAnimationFeedbackResult {
+  return evaluateCharacterPhysicsAnimationFeedback(rig,pose,physics,contacts,frame,options);
+}
+/** Runs collision feedback, physical animation, impact cooldown and optional predictive balance. */
+export function stepThreeCharacterPhysicsFeedback(input:CharacterPhysicsFeedbackInput):CharacterPhysicsFeedbackResult {
+  return stepCharacterPhysicsFeedback(input);
+}
