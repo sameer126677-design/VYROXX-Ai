@@ -1,6 +1,6 @@
 import type { Vec3 } from '../core/types';
 import type { CharacterPhysicsState } from './collisionPhysics';
-import type { CharacterPairInteractionResult, CharacterPairAction } from './pairInteraction';
+import type { CharacterPairInteractionResult } from './pairInteraction';
 
 export interface CharacterPairForceState {
   interactionId: string;
