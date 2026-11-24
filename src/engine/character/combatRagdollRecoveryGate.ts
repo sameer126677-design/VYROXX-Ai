@@ -18,6 +18,9 @@ export function canStartCombatRagdollRecovery(
   grounding: CombatRagdollGroundingState,
   options: CombatRagdollRecoveryGateOptions = {}
 ): CombatRagdollRecoveryGateResult {
+  if (physics.characterId !== ragdoll.characterId || grounding.characterId !== ragdoll.characterId || grounding.rigId !== ragdoll.rigId) {
+    throw new Error('Ragdoll recovery gate inputs must belong to the same character and rig.');
+  }
   const minimum = options.minimumSettledFrames ?? 8;
   const horizontal = options.maximumHorizontalSpeed ?? 0.2;
   const vertical = options.maximumVerticalSpeed ?? 0.2;
