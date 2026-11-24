@@ -877,3 +877,27 @@ export function applyThreeCharacterCombatRootMotion(previous:CharacterPhysicsSta
 export function solveThreeCharacterCombatFootIK(request:CombatFootIKRequest):CombatFootIKResult {
   return solveCombatFootIK(request);
 }
+
+import type { Vec3 } from '../core/types';
+
+import { sampleCombatGrounding, type CombatGroundingSample } from './combatGrounding';
+import { driveCombatMovementPhysics, type CombatMovementPhysicsOptions, type CombatMovementPhysicsResult } from './combatMovementPhysics';
+import { calculateCombatFootPlantCorrection, type CombatFootPlantCorrection } from './combatFootPlantCorrection';
+import { blendCombatLocomotion, type CombatLocomotionBlend } from './combatLocomotionBlend';
+
+/** Reports grounded status and the number of currently planted feet. */
+export function sampleThreeCharacterCombatGrounding(physics:CharacterPhysicsState,feet:CombatFootPlantState):CombatGroundingSample {
+  return sampleCombatGrounding(physics,feet);
+}
+/** Steers horizontal character velocity toward the requested combat locomotion velocity. */
+export function driveThreeCharacterCombatMovementPhysics(previous:CharacterPhysicsState,desired:Vec3,frame:number,fps:number,options?:CombatMovementPhysicsOptions):CombatMovementPhysicsResult {
+  return driveCombatMovementPhysics(previous,desired,frame,fps,options);
+}
+/** Computes a bounded root correction from feet that are currently locked to world anchors. */
+export function calculateThreeCharacterCombatFootPlantCorrection(state:CombatFootPlantState,leftCurrent:Vec3,rightCurrent:Vec3,maxCorrection=0.12):CombatFootPlantCorrection {
+  return calculateCombatFootPlantCorrection(state,leftCurrent,rightCurrent,maxCorrection);
+}
+/** Creates a compact locomotion blend descriptor for the current combat movement action. */
+export function blendThreeCharacterCombatLocomotion(action:CombatMovementAction,speed:number,footwork:CombatFootworkSample|null):CombatLocomotionBlend {
+  return blendCombatLocomotion(action,speed,footwork);
+}
