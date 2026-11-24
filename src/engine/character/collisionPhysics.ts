@@ -206,7 +206,7 @@ export function stepCharacterPhysics(
 
 /** Applies the physics root transform to a Three.js character object. */
 export function applyCharacterPhysicsTransform(object: Object3D, state: CharacterPhysicsState): void {
-  if (object.name && object.name !== state.characterId && object.userData?.characterId !== state.characterId) {
+  if (object.name && object.name !== state.characterId && object.userData?.characterId !== state.characterId && object.userData?.vyroxxCharacter?.id !== state.characterId) {
     throw new Error('Three.js character object does not match the physics state id.');
   }
   object.position.set(state.position.x,state.position.y,state.position.z);
