@@ -749,3 +749,41 @@ export function coordinateThreeCharacterCombatSquad(assignments:CombatSquadRoleA
 export function executeThreeCharacterCombatSquadOrders(orders:CombatSquadOrder[],request:CombatSquadExecutionRequest):CombatSquadExecutionResult[] {
   return createCombatSquadExecutionOrders(orders,request);
 }
+
+import { createPlayerCombatBehaviorProfile, recordPlayerCombatBehavior, summarizePlayerCombatBehavior, type PlayerCombatBehaviorProfile, type PlayerCombatBehaviorEvent, type PlayerCombatBehaviorSummary } from './combatPlayerBehavior';
+import { getCombatDifficultyProfile, getCombatDifficultyAIOptions, type CombatDifficulty, type CombatDifficultyProfile } from './combatDifficulty';
+import { planAdaptiveCombatReaction, type AdaptiveCombatReactionPlan } from './combatAdaptiveReaction';
+import { createAdaptiveCombatController, updateAdaptiveCombatController, type AdaptiveCombatControllerState } from './combatAdaptiveController';
+
+/** Creates a clean behavior profile for tracking observed player combat choices. */
+export function createThreePlayerCombatBehavior(frame=0):PlayerCombatBehaviorProfile {
+  return createPlayerCombatBehaviorProfile(frame);
+}
+/** Records one observed player action for later adaptive enemy decisions. */
+export function recordThreePlayerCombatBehavior(previous:PlayerCombatBehaviorProfile,event:PlayerCombatBehaviorEvent,frame:number):PlayerCombatBehaviorProfile {
+  return recordPlayerCombatBehavior(previous,event,frame);
+}
+/** Summarizes observed player tendencies without changing the source profile. */
+export function summarizeThreePlayerCombatBehavior(profile:PlayerCombatBehaviorProfile):PlayerCombatBehaviorSummary {
+  return summarizePlayerCombatBehavior(profile);
+}
+/** Returns deterministic tuning values for the selected enemy difficulty. */
+export function getThreeCharacterCombatDifficulty(difficulty:CombatDifficulty):CombatDifficultyProfile {
+  return getCombatDifficultyProfile(difficulty);
+}
+/** Converts a difficulty profile into the existing combat AI option shape. */
+export function getThreeCharacterCombatAIOptions(profile:CombatDifficultyProfile):CombatAIOptions {
+  return getCombatDifficultyAIOptions(profile);
+}
+/** Chooses an authored enemy response based on observed player behavior. */
+export function planThreeCharacterAdaptiveCombatReaction(behavior:PlayerCombatBehaviorSummary,difficulty:CombatDifficultyProfile):AdaptiveCombatReactionPlan {
+  return planAdaptiveCombatReaction(behavior,difficulty);
+}
+/** Creates persistent adaptive enemy state from an existing behavior profile. */
+export function createThreeCharacterAdaptiveCombatController(profile:PlayerCombatBehaviorProfile,difficulty:CombatDifficultyProfile,frame=0):AdaptiveCombatControllerState {
+  return createAdaptiveCombatController(profile,difficulty,frame);
+}
+/** Updates adaptive enemy response after enough new player actions have been observed. */
+export function updateThreeCharacterAdaptiveCombatController(previous:AdaptiveCombatControllerState,event:PlayerCombatBehaviorEvent,frame:number,difficulty:CombatDifficultyProfile,minSamplesBetweenAdaptations=3):AdaptiveCombatControllerState {
+  return updateAdaptiveCombatController(previous,event,frame,difficulty,minSamplesBetweenAdaptations);
+}
