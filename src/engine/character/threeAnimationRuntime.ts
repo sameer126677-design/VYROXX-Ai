@@ -925,3 +925,27 @@ export function recoverThreeCharacterCombatBalance(rig:CharacterRig,pose:Charact
 export function createThreeCharacterCombatPhysicsSnapshot(state:CharacterPhysicsState):CombatPhysicsSnapshot {
   return createCombatPhysicsSnapshot(state);
 }
+
+
+import { deriveCombatPhysicsAnimationSignals, type CombatPhysicsAnimationSignals } from './combatPhysicsAnimationSignals';
+import { applyCombatPhysicsPose, type CombatPhysicsPoseOptions } from './combatPhysicsPose';
+import { createCombatImpactFromContacts, type CombatImpactBridgeOptions } from './combatImpactPhysicsBridge';
+import { evaluateCombatPhysicalAnimation, type CombatPhysicalAnimationResult } from './combatPhysicalAnimation';
+import type { CharacterImpactRequest } from './characterImpactReaction';
+
+/** Converts physics velocity, grounding and contacts into animation-driving signals. */
+export function deriveThreeCharacterCombatPhysicsAnimationSignals(physics:CharacterPhysicsState,contacts:CharacterPhysicsStep['contacts']=[]):CombatPhysicsAnimationSignals {
+  return deriveCombatPhysicsAnimationSignals(physics,contacts);
+}
+/** Applies subtle procedural lean and torso response from current physics signals. */
+export function applyThreeCharacterCombatPhysicsPose(rig:CharacterRig,basePose:CharacterPose,signals:CombatPhysicsAnimationSignals,options?:CombatPhysicsPoseOptions):CharacterPose {
+  return applyCombatPhysicsPose(rig,basePose,signals,options);
+}
+/** Creates an authored collision impact request from the strongest supplied physics contact. */
+export function createThreeCharacterCombatImpactFromContacts(characterId:string,physics:CharacterPhysicsState,contacts:CharacterPhysicsStep['contacts'],frame:number,options?:CombatImpactBridgeOptions):CharacterImpactRequest|null {
+  return createCombatImpactFromContacts(characterId,physics,contacts,frame,options);
+}
+/** Evaluates the combined physics-driven procedural pose and optional impact reaction. */
+export function evaluateThreeCharacterCombatPhysicalAnimation(rig:CharacterRig,basePose:CharacterPose,physics:CharacterPhysicsState,contacts:CharacterPhysicsStep['contacts'],frame:number,impact?:CharacterImpactRequest|null,options?:CombatPhysicsPoseOptions):CombatPhysicalAnimationResult {
+  return evaluateCombatPhysicalAnimation(rig,basePose,physics,contacts,frame,impact,options);
+}
