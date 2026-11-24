@@ -1,4 +1,3 @@
-import type { Vec3 } from '../core/types';
 import type { CombatMovementAction } from './combatMovement';
 export type CombatFootworkPhase='plant'|'push-off'|'flight'|'landing'|'settle';
 export interface CombatFootworkSample { phase:CombatFootworkPhase; normalizedProgress:number; leftFootWeight:number; rightFootWeight:number; rootBob:number; stride:number; }
