@@ -39,7 +39,7 @@ export function evaluateThreeCharacterFrame(
 /** Updates an existing runtime without rebuilding its Three.js hierarchy. */
 export function updateThreeCharacterFrame(
   runtime: ThreeRigRuntime, rig: CharacterRig, preset: MotionPreset, frame: number, fps: number,
-  options: { durationSec?: number; clip?: MotionClip; unitScale?: number; footIK?: FootIKOptions; ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions } = {}
+  options: { durationSec?: number; clip?: MotionClip; unitScale?: number; footIK?: FootIKOptions; ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; groundContact?: GroundContactOptions } = {}
 ): CharacterPose {
   const clip = options.clip ?? createMotionClip(rig, preset, fps, options.durationSec ?? 2);
   let pose = sampleMotionClip(rig, clip, frame, fps);
