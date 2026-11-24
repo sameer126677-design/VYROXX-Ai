@@ -264,8 +264,12 @@ export function updateCharacterObjectHandover(
   if (sourceModel.appearance.id !== previous.sourceCharacterId || receiverModel.appearance.id !== previous.receiverCharacterId) {
     throw new Error('Handover models do not match the source and receiver recorded in the handover state.');
   }
+  if (request.firstHand !== previous.sourceHand || request.secondHand !== previous.receiverHand) {
+    throw new Error('Pair interaction hands do not match the handover state.');
+  }
   const interaction = updateCharacterPairInteraction(sourceModel, receiverModel, request);
-  const state = transitionCharacterObjectHandover(previous, event);
+  const currentEvent = event.type === 'complete' ? event : { ...event, interaction };
+  const state = transitionCharacterObjectHandover(previous, currentEvent);
   if (event.type !== 'transfer') return { interaction, state };
   const objectState = transferInteractionObjectState(sourceModel, receiverModel, object, previous.objectState, {
     hand: previous.receiverHand, frame: event.frame
