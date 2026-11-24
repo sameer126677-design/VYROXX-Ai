@@ -22,6 +22,7 @@ import { applyEnvironmentInteractionTransform, transitionEnvironmentInteraction,
 import { applySharedPayloadTransform, evaluatePhysicalCoordination, type PhysicalCoordinationRequest, type PhysicalCoordinationState, type PhysicalCoordinationResult } from './physicalCoordination';
 import { applyCharacterPhysicsTransform, stepCharacterPhysics, type CharacterPhysicsState, type CharacterCapsule, type EnvironmentCollider, type CharacterPhysicsOptions, type CharacterPhysicsStep } from './collisionPhysics';
 import { applyDynamicBodyTransform, stepDynamicPhysics, type DynamicBodyDefinition, type DynamicBodyState, type DynamicPhysicsOptions, type DynamicPhysicsStep } from './dynamicObjectPhysics';
+import { applyCharacterObjectForce, type CharacterObjectForceState, type CharacterObjectForceRequest, type CharacterObjectForceResult } from './characterObjectForce';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
 export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; dynamicBalance?: DynamicBalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions }; }
@@ -369,4 +370,16 @@ export function updateDynamicSceneObjects(
     applyDynamicBodyTransform(object,state);
   }
   return result;
+}
+
+
+/** Bridges a confirmed character hand interaction into the next dynamic-object physics state. */
+export function updateCharacterObjectForce(
+  definition: DynamicBodyDefinition,
+  bodyState: DynamicBodyState,
+  previous: CharacterObjectForceState,
+  request: CharacterObjectForceRequest,
+  interaction: CharacterInteractionResult
+): CharacterObjectForceResult {
+  return applyCharacterObjectForce(definition, bodyState, previous, request, interaction);
 }
