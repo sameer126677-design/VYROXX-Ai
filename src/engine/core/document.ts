@@ -22,9 +22,9 @@ function toNode(element: SceneElement, index: number): EngineNode {
     zIndex: index,
     sourceElement: element,
     assetRefs: element.assetRef ? [{
-      id: element.assetRef.id ?? element.id,
+      id: `${element.id}-asset`,
       source: 'user',
-      mimeType: element.assetRef.mimeType,
+      mimeType: element.assetRef.format === 'image' ? 'image/*' : element.assetRef.format === 'svg' ? 'image/svg+xml' : 'model/gltf-binary',
       storagePath: element.assetRef.storagePath,
     }] : [],
     tags: [element.kind, element.variant],
