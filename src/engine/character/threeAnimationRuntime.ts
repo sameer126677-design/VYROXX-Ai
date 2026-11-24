@@ -6,6 +6,7 @@ import { createThreeRigRuntime, updateThreeRigFromPose, type ThreeRigOptions, ty
 import { sampleLipSync, type LipSyncTrack } from './lipSync';
 import { evaluateCharacterActionSequence, type CharacterActionSequence, type CharacterActionFrame } from './actionSequence';
 import { setCharacterHandGesture } from './proceduralCharacter';
+import { applyFootIKToPose, evaluateFootContactPlan, type FootIKOptions } from './footIK';
 
 export interface ThreeCharacterFrame {
   runtime: ThreeRigRuntime;
@@ -19,11 +20,14 @@ export function evaluateThreeCharacterFrame(
   preset: MotionPreset,
   frame: number,
   fps: number,
-  options: ThreeRigOptions & { durationSec?: number; clip?: MotionClip } = {}
+  options: ThreeRigOptions & { durationSec?: number; clip?: MotionClip; footIK?: FootIKOptions } = {}
 ): ThreeCharacterFrame {
   const runtime = createThreeRigRuntime(rig, options);
   const clip = options.clip ?? createMotionClip(rig, preset, fps, options.durationSec ?? 2);
-  const pose = sampleMotionClip(rig, clip, frame, fps);
+  let pose = sampleMotionClip(rig, clip, frame, fps);
+  if (options.footIK && ['walk', 'run', 'sprint'].includes(preset)) {
+    pose = applyFootIKToPose(rig, pose, evaluateFootContactPlan(rig, frame, fps, options.footIK), options.footIK);
+  }
   updateThreeRigFromPose(runtime, rig, pose, options.unitScale ?? 1);
   return { runtime, pose, frame };
 }
@@ -35,10 +39,13 @@ export function updateThreeCharacterFrame(
   preset: MotionPreset,
   frame: number,
   fps: number,
-  options: { durationSec?: number; clip?: MotionClip; unitScale?: number } = {}
+  options: { durationSec?: number; clip?: MotionClip; unitScale?: number; footIK?: FootIKOptions } = {}
 ): CharacterPose {
   const clip = options.clip ?? createMotionClip(rig, preset, fps, options.durationSec ?? 2);
-  const pose = sampleMotionClip(rig, clip, frame, fps);
+  let pose = sampleMotionClip(rig, clip, frame, fps);
+  if (options.footIK && ['walk', 'run', 'sprint'].includes(preset)) {
+    pose = applyFootIKToPose(rig, pose, evaluateFootContactPlan(rig, frame, fps, options.footIK), options.footIK);
+  }
   updateThreeRigFromPose(runtime, rig, pose, options.unitScale ?? 1);
   return pose;
 }

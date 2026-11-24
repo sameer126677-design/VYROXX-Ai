@@ -1,7 +1,16 @@
 import type { CharacterPose, CharacterRig, JointPose } from './rig';
 import { solveTwoBoneIK2D } from './rig';
 
+export interface GroundSurface {
+  heightAt(x: number, z: number): number;
+  normalAt?(x: number, z: number): { x: number; y: number; z: number };
+}
 export interface FootIKOptions {
+  groundSurface?: GroundSurface;
+  rootPosition?: { x: number; y: number; z: number };
+  rootVelocity?: { x: number; z: number };
+  terrainAlign?: boolean;
+  ankleAlignWeight?: number;
   groundHeight?: number;
   strideLength?: number;
   footLift?: number;
@@ -17,6 +26,9 @@ export interface FootContact {
   weight: number;
   target: { x: number; y: number };
   reachable: boolean;
+  worldTarget?: { x: number; y: number; z: number };
+  groundNormal?: { x: number; y: number; z: number };
+  groundAngle?: number;
 }
 export interface FootContactPlan { frame: number; contacts: [FootContact, FootContact]; }
 
@@ -27,6 +39,8 @@ const wrap = (v: number) => ((v % TAU) + TAU) % TAU;
 /** Produces repeatable planted/swing foot targets in root-local XY coordinates. */
 export function evaluateFootContactPlan(rig: CharacterRig, frame: number, fps: number, options: FootIKOptions = {}): FootContactPlan {
   const ground = options.groundHeight ?? 0;
+  const root = options.rootPosition ?? { x: 0, y: 0, z: 0 };
+  const velocity = options.rootVelocity ?? { x: 0, z: 0 };
   const stride = Math.max(0, options.strideLength ?? 0.34);
   const lift = Math.max(0, options.footLift ?? 0.12);
   const stance = clamp(options.stanceRatio ?? 0.62, 0.1, 0.9);
@@ -35,8 +49,16 @@ export function evaluateFootContactPlan(rig: CharacterRig, frame: number, fps: n
     const p = wrap(value) / TAU;
     const planted = p < stance;
     const progress = planted ? p / stance : (p - stance) / (1 - stance);
-    const x = planted ? stride * (0.5 - progress) : stride * (-0.5 + progress);
-    const y = ground + (planted ? 0 : Math.sin(progress * Math.PI) * lift);
+    const elapsedStance = p / 1.5;
+    const x = planted ? stride * 0.5 - velocity.x * elapsedStance : stride * (-0.5 + progress);
+    const worldX = root.x + x;
+    const worldZ = root.z;
+    const terrainY = options.groundSurface?.heightAt(worldX, worldZ) ?? ground;
+    const y = terrainY - root.y + (planted ? 0 : Math.sin(progress * Math.PI) * lift);
+    const rawNormal = options.groundSurface?.normalAt?.(worldX, worldZ) ?? { x: 0, y: 1, z: 0 };
+    const normalLength = Math.hypot(rawNormal.x, rawNormal.y, rawNormal.z) || 1;
+    const groundNormal = { x: rawNormal.x / normalLength, y: rawNormal.y / normalLength, z: rawNormal.z / normalLength };
+    const groundAngle = options.terrainAlign === false ? 0 : Math.atan2(-groundNormal.x, Math.max(0.0001, groundNormal.y));
     const hip = rig.joints.find(j => j.id === side + '_hip');
     const knee = rig.joints.find(j => j.id === side + '_knee');
     const ankle = rig.joints.find(j => j.id === side + '_ankle');
