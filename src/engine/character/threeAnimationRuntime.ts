@@ -1136,3 +1136,21 @@ export function evaluateThreeCharacterPhysicsAnimationFeedback(rig:CharacterRig,
 export function stepThreeCharacterPhysicsFeedback(input:CharacterPhysicsFeedbackInput):CharacterPhysicsFeedbackResult {
   return stepCharacterPhysicsFeedback(input);
 }
+
+
+import { stepCharacterUnifiedController, type CharacterUnifiedControllerInput, type CharacterUnifiedControllerResult } from './characterUnifiedController';
+import { createCharacterUnifiedControllerState, type CharacterUnifiedControllerState } from './characterUnifiedControllerState';
+import { summarizeCharacterUnifiedController, type CharacterUnifiedControllerTelemetry } from './characterUnifiedControllerTelemetry';
+
+/** Creates combined controller state; optional grounded IK and balance states can be enabled later. */
+export function createThreeCharacterUnifiedControllerState(controller:Parameters<typeof createCharacterUnifiedControllerState>[0],groundedIK?:Parameters<typeof createCharacterUnifiedControllerState>[1],balance?:Parameters<typeof createCharacterUnifiedControllerState>[2]):CharacterUnifiedControllerState {
+  return createCharacterUnifiedControllerState(controller,groundedIK??null,balance??null);
+}
+/** Runs physics movement, animation, optional terrain-aware foot IK and optional balance in one ordered frame. */
+export function stepThreeCharacterUnifiedController(input:CharacterUnifiedControllerInput):CharacterUnifiedControllerResult {
+  return stepCharacterUnifiedController(input);
+}
+/** Summarizes the unified controller's current movement, contact, IK and balance results. */
+export function getThreeCharacterUnifiedControllerTelemetry(result:CharacterUnifiedControllerResult):CharacterUnifiedControllerTelemetry {
+  return summarizeCharacterUnifiedController(result);
+}
