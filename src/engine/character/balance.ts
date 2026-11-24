@@ -117,3 +117,43 @@ export function solveCharacterBalance3D(rig:CharacterRig,pose:CharacterPose,opti
   const nearest=closestOnPolygon(finalPoint,polygon);
   return {pose:current,centerOfMass:com,supportCenter,correction,stable,distanceToSupport:stable?0:distance2(finalPoint,nearest),supportPolygon:polygon};
 }
+
+export interface DynamicBalanceOptions extends BalanceOptions {
+  velocity?:{x:number;z:number};
+  acceleration?:{x:number;z:number};
+  predictionHorizonSec?:number;
+  predictionWeight?:number;
+}
+export interface DynamicBalanceReport extends BalanceReport {
+  predictedCenterOfMass:Vec3;
+  predictionOffset:SupportPoint;
+}
+/**
+ * Lightweight predictive balance: estimates where the COM will drift over a
+ * short horizon, biases the pose against that drift, then runs static support
+ * correction. This is not a rigid-body or momentum simulation.
+ */
+export function solveDynamicCharacterBalance3D(
+  rig:CharacterRig,pose:CharacterPose,options:DynamicBalanceOptions
+):DynamicBalanceReport {
+  if(pose.rigId!==rig.id)throw new Error('Pose rig id does not match the target rig.');
+  const horizon=Math.max(0,Math.min(0.5,options.predictionHorizonSec??0.12));
+  const weight=Math.max(0,Math.min(1,options.predictionWeight??0.65));
+  const velocity=options.velocity??{x:0,z:0},acceleration=options.acceleration??{x:0,z:0};
+  const offset={
+    x:(velocity.x*horizon+0.5*acceleration.x*horizon*horizon)*weight,
+    z:(velocity.z*horizon+0.5*acceleration.z*horizon*horizon)*weight
+  };
+  const root=rig.joints.find(j=>j.id===rig.rootJointId);
+  if(!root)throw new Error('Dynamic balance requires a valid root joint.');
+  const rootPose=pose.joints.find(j=>j.jointId===root.id);
+  const base=rootPose?.position??root.bindPosition;
+  const predictedPose:CharacterPose={...pose,joints:[
+    ...pose.joints.filter(j=>j.jointId!==root.id),
+    {jointId:root.id,rotation:rootPose?.rotation??root.bindRotation,
+      position:{x:base.x-offset.x,y:base.y,z:base.z-offset.z}}
+  ]};
+  const report=solveCharacterBalance3D(rig,predictedPose,options);
+  const predictedCenterOfMass={...report.centerOfMass};
+  return{...report,predictedCenterOfMass,predictionOffset:offset};
+}

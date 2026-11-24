@@ -99,3 +99,57 @@ export function applyGroundContactPlan(rig:CharacterRig,pose:CharacterPose,plan:
   if(pose.rigId!==rig.id)throw new Error('Ground contact pose belongs to a different rig.');
   return plan.ikRequests.reduce((current,request)=>solveLimbIK3D(rig,current,request).pose,pose);
 }
+
+export interface FootPlantAnchor { position:Vec3; normal:Vec3; plantedAtFrame:number; }
+export interface FootPlantState {
+  rigId:string;
+  left:FootPlantAnchor|null;
+  right:FootPlantAnchor|null;
+  previousLeftPhase:number|null;
+  previousRightPhase:number|null;
+  lastFrame:number|null;
+}
+export interface StatefulGroundContactResult {
+  plan:GroundContactPlan;
+  state:FootPlantState;
+}
+/** Creates an explicit, serializable tracker state. The caller owns and stores it. */
+export function createFootPlantState(rigId:string):FootPlantState {
+  return{rigId,left:null,right:null,previousLeftPhase:null,previousRightPhase:null,lastFrame:null};
+}
+/**
+ * Updates persistent stance anchors. An anchor is captured on swing->stance
+ * and retained until that foot enters swing; no module-global mutable state.
+ */
+export function updateFootPlantTracker(
+  rig:CharacterRig,frame:number,fps:number,previous:FootPlantState,options:GroundContactOptions={}
+):StatefulGroundContactResult {
+  if(previous.rigId!==rig.id)throw new Error('Foot plant state belongs to a different rig.');
+  if(previous.lastFrame!==null&&frame<previous.lastFrame)throw new Error('Foot plant tracker requires non-decreasing frames; reset state before seeking backwards.');
+  const plan=evaluateGroundContactPlan(rig,frame,fps,options);
+  const next:FootPlantState={...previous,left:previous.left?{...previous.left,position:{...previous.left.position},normal:{...previous.left.normal}}:null,
+    right:previous.right?{...previous.right,position:{...previous.right.position},normal:{...previous.right.normal}}:null};
+  for(const contact of plan.contacts){
+    const key=contact.side;
+    const phaseKey=key==='left'?'previousLeftPhase':'previousRightPhase';
+    const priorPhase=previous[phaseKey];
+    const enteredStance=contact.planted&&(priorPhase===null||priorPhase>= (options.stanceRatio??0.62));
+    if(!contact.planted)next[key]=null;
+    else if(enteredStance||!next[key]){
+      next[key]={position:{...contact.target,y:options.surface?.heightAt(contact.target.x,contact.target.z)??contact.target.y},
+        normal:{...contact.normal},plantedAtFrame:frame};
+    }
+    next[phaseKey]=contact.phase;
+    const anchor=next[key];
+    if(anchor&&contact.planted){
+      contact.target={...anchor.position};
+      contact.normal={...anchor.normal};
+      contact.weight=1;
+      const request=plan.ikRequests.find(item=>item.rootJointId===key+'_hip');
+      if(request)request.target={...anchor.position};
+    }
+  }
+  next.lastFrame=frame;
+  plan.supportPoints=plan.contacts.filter(contact=>contact.planted).map(contact=>({x:contact.target.x,z:contact.target.z}));
+  return{plan,state:next};
+}
