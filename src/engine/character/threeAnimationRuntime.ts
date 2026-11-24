@@ -12,6 +12,7 @@ import { solveFullBodyIK3D, type FullBodyIKOptions } from './fullBodyIK';
 import { solveCharacterBalance3D, solveDynamicCharacterBalance3D, type BalanceOptions, type DynamicBalanceOptions } from './balance';
 import { evaluateGroundContactPlan, applyGroundContactPlan, createFootPlantState, updateFootPlantTracker, type FootPlantState, type GroundContactPlan, type GroundContactOptions } from './groundContact';
 import { evaluateLocomotionState, applyLocomotionPose, updateLocomotionController, createLocomotionControllerState, type LocomotionInput, type LocomotionOptions, type LocomotionControllerState } from './locomotion';
+import { createFootstepEventState, detectFootstepEvents, type FootstepEvent, type FootstepEventState } from './locomotionEvents';
 
 export interface ThreeCharacterFrame { runtime: ThreeRigRuntime; pose: CharacterPose; frame: number; }
 export interface ThreeCharacterIKOptions { ik3D?: LimbIK3DRequest[]; fullBodyIK?: FullBodyIKOptions; balance?: BalanceOptions; dynamicBalance?: DynamicBalanceOptions; groundContact?: GroundContactOptions; locomotion?: LocomotionInput & { options?: LocomotionOptions }; }
@@ -48,6 +49,8 @@ export interface StatefulThreeCharacterFrameResult {
   footPlantState: FootPlantState;
   locomotionState: LocomotionControllerState;
   groundContactPlan: GroundContactPlan;
+  footstepEvents: FootstepEvent[];
+  footstepEventState: FootstepEventState;
   frame: number;
 }
 export interface StatefulThreeCharacterFrameOptions {
@@ -75,7 +78,8 @@ export function updateThreeCharacterFrameWithContactState(
   fps: number,
   previousState: FootPlantState = createFootPlantState(rig.id),
   options: StatefulThreeCharacterFrameOptions = {},
-  previousLocomotionState: LocomotionControllerState = options.locomotionState ?? createLocomotionControllerState(options.locomotion?.heading ?? 0)
+  previousLocomotionState: LocomotionControllerState = options.locomotionState ?? createLocomotionControllerState(options.locomotion?.heading ?? 0),
+  previousFootstepState: FootstepEventState = createFootstepEventState(rig.id)
 ): StatefulThreeCharacterFrameResult {
   const controlledLocomotion = options.locomotion
     ? updateLocomotionController(options.locomotion, frame, fps, previousLocomotionState, options.locomotion.options)
@@ -102,6 +106,7 @@ export function updateThreeCharacterFrameWithContactState(
     } : {})
   };
   const tracked = updateFootPlantTracker(rig, frame, fps, previousState, contactOptions);
+  const footsteps = detectFootstepEvents(rig.id, frame, tracked.plan, previousFootstepState, { stanceRatio: contactOptions.stanceRatio, speed: locomotion?.speed ?? 0 });
   pose = applyGroundContactPlan(rig, pose, tracked.plan);
   if (options.ik3D?.length) {
     pose = options.ik3D.reduce((current, request) => solveLimbIK3D(rig, current, request).pose, pose);
@@ -120,7 +125,7 @@ export function updateThreeCharacterFrameWithContactState(
     }
   }
   updateThreeRigFromPose(runtime, rig, pose, options.unitScale ?? 1);
-  return { pose, footPlantState: tracked.state, locomotionState: controlledLocomotion?.controllerState ?? previousLocomotionState, groundContactPlan: tracked.plan, frame };
+  return { pose, footPlantState: tracked.state, locomotionState: controlledLocomotion?.controllerState ?? previousLocomotionState, groundContactPlan: tracked.plan, footstepEvents: footsteps.events, footstepEventState: footsteps.state, frame };
 }
 
 /** Updates an existing runtime without rebuilding its Three.js hierarchy. */
