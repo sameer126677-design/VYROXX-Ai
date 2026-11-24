@@ -1154,3 +1154,17 @@ export function stepThreeCharacterUnifiedController(input:CharacterUnifiedContro
 export function getThreeCharacterUnifiedControllerTelemetry(result:CharacterUnifiedControllerResult):CharacterUnifiedControllerTelemetry {
   return summarizeCharacterUnifiedController(result);
 }
+
+
+import { createThreeCharacterLocomotionMachineState as createLocomotionMachineState, stepThreeCharacterLocomotionMachine as stepLocomotionMachine } from './characterLocomotionMachineRuntime';
+import type { CharacterLocomotionMachineInput, CharacterLocomotionMachineResult } from './characterLocomotionMachine';
+import type { CharacterLocomotionMachineState } from './characterLocomotionMachineState';
+
+/** Creates persistent idle/walk/run/sprint/jump/fall/land/turn/stop transition state. */
+export function createThreeCharacterLocomotionState(rigId:string,frame=0,grounded=true):CharacterLocomotionMachineState {
+  return createLocomotionMachineState(rigId,frame,grounded);
+}
+/** Evaluates locomotion mode transitions and applies grounded locomotion pose intelligence. */
+export function stepThreeCharacterLocomotion(input:CharacterLocomotionMachineInput):CharacterLocomotionMachineResult {
+  return stepLocomotionMachine(input);
+}
