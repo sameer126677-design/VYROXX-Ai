@@ -787,3 +787,33 @@ export function createThreeCharacterAdaptiveCombatController(profile:PlayerComba
 export function updateThreeCharacterAdaptiveCombatController(previous:AdaptiveCombatControllerState,event:PlayerCombatBehaviorEvent,frame:number,difficulty:CombatDifficultyProfile,minSamplesBetweenAdaptations=3):AdaptiveCombatControllerState {
   return updateAdaptiveCombatController(previous,event,frame,difficulty,minSamplesBetweenAdaptations);
 }
+
+import { createCombatAnimationProfile, type CombatAnimationProfile } from './combatAnimationProfile';
+import { createCombatAnimationState, startCombatAnimationState, clearCombatAnimationState, type CombatAnimationState } from './combatAnimationState';
+import { driveCombatAnimation, type CombatAnimationDriverResult } from './combatAnimationDriver';
+import { blendCombatAnimationPose, type CombatAnimationBlendOptions } from './combatAnimationBlend';
+
+/** Creates a reusable animation profile for an authored combat action. */
+export function createThreeCharacterCombatAnimationProfile(action:CombatAnimationRequest['action'],move?:CombatMoveDefinition,side:'left'|'right'='right',intensity=1):CombatAnimationProfile {
+  return createCombatAnimationProfile(action,move,side,intensity);
+}
+/** Creates persistent combat animation state for one character. */
+export function createThreeCharacterCombatAnimationState(characterId:string,frame=0):CombatAnimationState {
+  return createCombatAnimationState(characterId,frame);
+}
+/** Starts a profile on a character's animation timeline. */
+export function startThreeCharacterCombatAnimation(previous:CombatAnimationState,profile:CombatAnimationProfile,frame:number):CombatAnimationState {
+  return startCombatAnimationState(previous,profile,frame);
+}
+/** Clears a completed combat animation state. */
+export function clearThreeCharacterCombatAnimation(previous:CombatAnimationState,frame:number):CombatAnimationState {
+  return clearCombatAnimationState(previous,frame);
+}
+/** Derives an animation request from the current combat action and phase. */
+export function driveThreeCharacterCombatAnimation(previous:CombatAnimationState,combat:CharacterCombatState,frame:number,profileOverride?:CombatAnimationProfile):CombatAnimationDriverResult {
+  return driveCombatAnimation(previous,combat,frame,profileOverride);
+}
+/** Blends a procedural combat overlay with the supplied base pose using fade weights. */
+export function blendThreeCharacterCombatAnimation(rig:CharacterRig,basePose:CharacterPose,request:CombatAnimationRequest,frame:number,options:CombatAnimationBlendOptions):CharacterPose {
+  return blendCombatAnimationPose(rig,basePose,request,frame,options);
+}
