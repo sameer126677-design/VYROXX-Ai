@@ -18,3 +18,4 @@ export * from '../cinematic/cameraDirector';
 export * from '../cinematic/threeCameraBridge';
 export * from '../visuals/proceduralBuilder';
 export * from '../visuals/threeBuilder';
+export * from '../character/threeAnimationRuntime';
