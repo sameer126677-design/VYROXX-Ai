@@ -28,10 +28,14 @@ export function evaluateCharacterAnimationPipeline(input:CharacterAnimationPipel
  const stages=evaluateCharacterAnimationPoseStages(rig,basePose,frame,fps,input.stages);
  let pose=stages.pose,physical:CombatPhysicalAnimationResult|null=null,ragdoll:CombatRagdollAnimationDriverResult|null=null;
  if(input.physics){
+  if(input.physics.characterId!==rig.characterId) throw new Error('Animation pipeline physics character does not match the rig.');
+  if(input.impact&&input.impact.characterId!==rig.characterId) throw new Error('Animation pipeline impact character does not match the rig.');
   physical=evaluateCombatPhysicalAnimation(rig,pose,input.physics,input.contacts??[],frame,input.impact,input.physicalPose);
   pose=physical.pose;
  } else if(input.impact) throw new Error('Physics state is required when applying an impact reaction.');
  if(input.ragdoll){
+  if(input.ragdoll.characterId!==rig.characterId||input.ragdoll.rigId!==rig.id) throw new Error('Animation pipeline ragdoll does not match the rig.');
+  if(input.ragdollAnimation&&(input.ragdollAnimation.characterId!==rig.characterId||input.ragdollAnimation.rigId!==rig.id)) throw new Error('Animation pipeline ragdoll animation state does not match the rig.');
   if(!input.ragdollAnimation) throw new Error('Ragdoll animation state is required with a ragdoll state.');
   if(input.ragdoll.phase==='recovering'&&!input.getUpPose) throw new Error('Get-up pose is required during ragdoll recovery.');
   ragdoll=driveCombatRagdollAnimation(rig,pose,input.ragdoll,input.ragdollAnimation,frame,fps,input.grounded??false,{...input.ragdollOptions,getUpPose:input.getUpPose});
