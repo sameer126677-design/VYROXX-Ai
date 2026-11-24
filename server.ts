@@ -11,12 +11,14 @@ import {
   buildAppSecurityHeaders,
   isOriginAllowed,
   JwtKeyResolver,
+  ImageGenerationRequestSchema,
   PlanRequestSchema,
   resolveSafeUserFilePath,
   SlidingWindowRateLimiter,
   validateStartupConfig,
   verifyFirebaseBearerToken,
 } from './serverSecurity';
+import { createGeneratedImageFileName, generateCloudflareImage } from './src/engine/imageGeneration/cloudflareImageService';
 import {
   AI_UNAVAILABLE_USER_MESSAGE,
   AiChainItem,
@@ -116,6 +118,9 @@ export interface CreateVyroxxAppOptions {
   codecraftApiKey?: string;
   chain?: readonly AiChainItem[];
   timeoutMs?: number;
+  cloudflareAccountId?: string;
+  cloudflareApiToken?: string;
+  cloudflareFetch?: typeof fetch;
 }
 
 export function createVyroxxApiApp(options: CreateVyroxxAppOptions = {}) {
@@ -300,6 +305,93 @@ export function createVyroxxApiApp(options: CreateVyroxxAppOptions = {}) {
         });
       } finally {
         activeGenerations.delete(lockKey);
+      }
+    }
+  );
+
+  // Authenticated Cloudflare FLUX.2 image generation. Provider credentials remain server-side.
+  app.post(
+    '/api/ai/generate-image',
+    requireAuth,
+    smallJsonParser,
+    async (req: AuthenticatedRequest, res: Response) => {
+      const uid = req.auth!.uid;
+      const limit = rateLimiter.check(`image:${uid}`, 12, 5 * 60 * 1000);
+      if (!limit.allowed) {
+        res.setHeader('Retry-After', String(limit.retryAfterSec));
+        res.status(429).json({ error: 'Image generation limit reached. Please wait before trying again.' });
+        return;
+      }
+
+      const parsed = ImageGenerationRequestSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: parsed.error.issues[0]?.message ?? 'Invalid image generation request.' });
+        return;
+      }
+
+      try {
+        const data = parsed.data;
+        const references: Array<{ bytes: Buffer; mimeType: string }> = [];
+        let totalReferenceBytes = 0;
+        for (const storagePath of data.referenceImagePaths ?? []) {
+          const [ownerUid, fileName] = storagePath.split('/');
+          if (ownerUid !== uid || !fileName) throw new Error('Reference image access denied.');
+          const targetPath = resolveSafeUserFilePath(storageRoot, uid, fileName);
+          if (!targetPath || !fs.existsSync(targetPath)) throw new Error('A reference image could not be found.');
+          const bytes = fs.readFileSync(targetPath);
+          totalReferenceBytes += bytes.length;
+          if (bytes.length === 0 || bytes.length > 512 * 1024 || totalReferenceBytes > 2 * 1024 * 1024) {
+            throw new Error('Each reference image must be at most 512 KB, with a 2 MB total limit.');
+          }
+          const ext = path.extname(fileName).toLowerCase();
+          const mimeType = ext === '.png' ? 'image/png' : ext === '.jpg' || ext === '.jpeg' ? 'image/jpeg' : ext === '.webp' ? 'image/webp' : '';
+          if (!mimeType) throw new Error('Reference images must be PNG, JPEG, or WebP.');
+          const validation = validateUploadBytes(fileName, mimeType, bytes);
+          if (!validation.ok) throw new Error(validation.error);
+          references.push({ bytes, mimeType });
+        }
+
+        const generated = await generateCloudflareImage(
+          {
+            prompt: data.prompt,
+            model: data.model,
+            width: data.width,
+            height: data.height,
+            guidance: data.guidance,
+            seed: data.seed,
+            referenceImages: references,
+          },
+          {
+            accountId: options.cloudflareAccountId,
+            apiToken: options.cloudflareApiToken,
+            fetchFn: options.cloudflareFetch,
+          }
+        );
+
+        if (generated.bytes.length > 15 * 1024 * 1024) {
+          throw new Error('Generated image exceeded the storage size limit.');
+        }
+        const extension = generated.mimeType === 'image/jpeg' ? 'jpg' : generated.mimeType.split('/')[1];
+        const fileName = createGeneratedImageFileName(extension);
+        const userDir = path.resolve(storageRoot, uid);
+        if (!fs.existsSync(userDir)) fs.mkdirSync(userDir, { recursive: true });
+        const targetPath = resolveSafeUserFilePath(storageRoot, uid, fileName);
+        if (!targetPath) throw new Error('Could not create a safe image storage path.');
+        fs.writeFileSync(targetPath, generated.bytes, { flag: 'wx' });
+
+        res.json({
+          storagePath: `${uid}/${fileName}`,
+          mimeType: generated.mimeType,
+          fileSizeBytes: generated.bytes.length,
+          model: generated.model,
+          width: data.width,
+          height: data.height,
+        });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : 'Image generation failed.';
+        const status = /not configured/i.test(message) ? 503 : /access denied|could not be found|must be|limit|unsupported|invalid|no larger/i.test(message) ? 400 : 502;
+        console.error('[VYROXX Image Error]:', message.slice(0, 240));
+        res.status(status).json({ error: status === 502 ? 'Image generation failed. Please retry shortly.' : message });
       }
     }
   );
