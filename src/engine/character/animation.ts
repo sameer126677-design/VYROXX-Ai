@@ -1,4 +1,3 @@
-import type { Vec3 } from '../core/types';
 import type { CharacterPose, CharacterRig, JointPose } from './rig';
 import { validateCharacterRig } from './rig';
 
@@ -12,7 +11,6 @@ export interface MotionClip {
   amplitude: number;
   speed: number;
 }
-const ZERO: Vec3 = { x: 0, y: 0, z: 0 };
 function pose(jointId: string, x = 0, y = 0, z = 0): JointPose {
   return { jointId, rotation: { x, y, z } };
 }
@@ -58,6 +56,35 @@ export function sampleMotionClip(rig: CharacterRig, clip: MotionClip, frame: num
       break;
     default:
       joints = [pose('spine', 0, 0, bob * 0.35), pose('head', Math.sin(phase) * 0.025)];
+  }
+  if (clip.preset === 'walk' || clip.preset === 'run' || clip.preset === 'sprint') {
+    const stride = clip.preset === 'walk' ? 1 : clip.preset === 'sprint' ? 1.28 : 1.12;
+    const cycle = phase % (Math.PI * 2);
+    const leftPhase = cycle;
+    const rightPhase = (cycle + Math.PI) % (Math.PI * 2);
+    const stance = (value:number) => value < Math.PI * 0.62;
+    const footRoll = (value:number) => stance(value)
+      ? Math.sin(value / (Math.PI * 0.62) * Math.PI) * 0.16 * stride
+      : -Math.sin((value - Math.PI * 0.62) / (Math.PI * 1.38) * Math.PI) * 0.10 * stride;
+    const byId = new Map(joints.map(item => [item.jointId,item]));
+    const setJoint = (id:string,x:number,y:number,z:number) => {
+      const current=byId.get(id);
+      if(current) current.rotation={x,y,z};
+      else { const item=pose(id,x,y,z); joints.push(item); byId.set(id,item); }
+    };
+    setJoint('left_ankle',0,0,footRoll(leftPhase));
+    setJoint('right_ankle',0,0,footRoll(rightPhase));
+    const head=byId.get('head');
+    const spine=byId.get('spine');
+    if(head) head.rotation={...head.rotation,x:head.rotation.x*0.35,y:head.rotation.y*0.45,z:head.rotation.z*0.25};
+    else setJoint('head',0,0,0);
+    if(spine) spine.rotation={...spine.rotation,x:spine.rotation.x*0.35,y:spine.rotation.y*0.25,z:spine.rotation.z + Math.sin(cycle*2)*0.012*stride};
+    const contactLift=(value:number)=>stance(value)?0:Math.sin((value-Math.PI*.62)/(Math.PI*1.38)*Math.PI)*0.035*stride;
+    setJoint('left_knee',byId.get('left_knee')?.rotation.x??0,0,0);
+    setJoint('right_knee',byId.get('right_knee')?.rotation.x??0,0,0);
+    const leftAnkle=byId.get('left_ankle'),rightAnkle=byId.get('right_ankle');
+    if(leftAnkle) leftAnkle.position={x:0,y:contactLift(leftPhase),z:0};
+    if(rightAnkle) rightAnkle.position={x:0,y:contactLift(rightPhase),z:0};
   }
   return { rigId: rig.id, frame, joints };
 }
