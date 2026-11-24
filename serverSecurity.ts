@@ -243,6 +243,21 @@ export class SlidingWindowRateLimiter {
   }
 }
 
+export const ImageGenerationRequestSchema = z.object({
+  prompt: z.string().trim().min(1).max(4000),
+  projectId: z.string().min(1).max(128).regex(/^[a-zA-Z0-9_-]+$/),
+  model: z.enum([
+    '@cf/black-forest-labs/flux-2-klein-4b',
+    '@cf/black-forest-labs/flux-2-klein-9b',
+    '@cf/black-forest-labs/flux-2-dev',
+  ]).default('@cf/black-forest-labs/flux-2-klein-4b'),
+  width: z.number().int().min(256).max(1920).default(1024),
+  height: z.number().int().min(256).max(1920).default(768),
+  guidance: z.number().min(0).max(20).optional(),
+  seed: z.number().int().min(0).max(2147483647).optional(),
+  referenceImagePaths: z.array(z.string().max(320).regex(/^[a-zA-Z0-9_-]{1,128}\\/[a-zA-Z0-9._-]{1,200}$/)).max(4).optional(),
+});
+
 export const PlanRequestSchema = z.object({
   prompt: z.string().min(1).max(3000),
   projectId: z.string().min(1).max(128).regex(/^[a-zA-Z0-9_-]+$/),
