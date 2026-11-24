@@ -35,11 +35,12 @@ export function applyCombatRagdollImpulseFromContacts(
     throw new Error('Ragdoll impulse bridge tuning is invalid.');
   }
   const contact = contacts
-    .filter(item => Number.isFinite(item.penetration) && item.penetration >= minimum &&
-      [item.normal.x, item.normal.y, item.normal.z].every(Number.isFinite))
+    .filter(item => Number.isFinite(item.penetration) && item.penetration > 0 && item.penetration >= minimum &&
+      [item.normal.x, item.normal.y, item.normal.z].every(Number.isFinite) &&
+      Math.hypot(item.normal.x, item.normal.y, item.normal.z) > 1e-8)
     .slice()
     .sort((a, b) => b.penetration - a.penetration)[0];
-  if (!contact || maximum === 0) return { state: previous, appliedJointIds: [], impulse: null };
+  if (!contact) return { state: previous, appliedJointIds: [], impulse: null };
 
   const magnitude = Math.min(maximum, contact.penetration * scale);
   const impulse: Vec3 = {
