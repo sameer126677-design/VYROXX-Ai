@@ -11,7 +11,7 @@ export function createAdaptiveCombatController(behavior:PlayerCombatBehaviorProf
 export function updateAdaptiveCombatController(previous:AdaptiveCombatControllerState,event:PlayerCombatBehaviorEvent,frame:number,difficulty:CombatDifficultyProfile,minSamplesBetweenAdaptations=3):AdaptiveCombatControllerState{
  if(!Number.isFinite(frame)||frame<previous.lastAdaptedFrame||!Number.isInteger(minSamplesBetweenAdaptations)||minSamplesBetweenAdaptations<1)throw new Error('Invalid adaptive controller update.');
  const behavior=recordPlayerCombatBehavior(previous.behavior,event,frame);
- if(behavior.samples-behavior.samples-previous.summarySamples < minSamplesBetweenAdaptations)return {...previous,behavior};
+ if(behavior.samples-previous.summarySamples < minSamplesBetweenAdaptations)return {...previous,behavior};
  const summary=summarizePlayerCombatBehavior(behavior);
  return {behavior,summary,reaction:planAdaptiveCombatReaction(summary,difficulty),lastAdaptedFrame:frame,summarySamples:behavior.samples};
 }
